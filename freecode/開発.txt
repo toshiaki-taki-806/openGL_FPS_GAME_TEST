@@ -1,0 +1,8 @@
+•Ç‚ÌÕ“Ë”»’è
+
+
+auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
+‚Å–€CŒW”‚Æ”½”­ŒW”‚ğİ’è‚·‚é‚Ì‚ğ‚â‚ß‚é¨ƒV[ƒ“–ˆ‚Éİ’è‚Å‚«‚é‚æ‚¤‚É‚·‚éB
+
+
+İ’è‚ğtxt?‚É‚µ‚Ä‚»‚±‚©‚çŒÄ‚Ñ‚Ş

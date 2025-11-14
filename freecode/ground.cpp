@@ -1,0 +1,37 @@
+#include "glut.h"
+#include "ground.h"
+
+void drawGround()
+{
+	const int viewRange = 20;     // カメラから描画する範囲（半径20m）
+	const float tileSize = 1.0f;  // 1タイルの幅・奥行き（1m四方）
+
+	// カメラの現在座標を整数に丸める（タイル単位で扱うため）
+	int camX = static_cast<int>(camera.pos.x);
+	int camZ = static_cast<int>(camera.pos.z);
+
+	glColor3f(1.0f, 1.0f, 1.0f);  // 線の色は白
+	glLineWidth(1.0f);            // 線幅
+
+	glBegin(GL_LINES);
+	// X方向の線
+	for (int x = camX - viewRange; x <= camX + viewRange; ++x)
+	{
+		float xf = x * tileSize;
+		float zStart = (camZ - viewRange) * tileSize;
+		float zEnd = (camZ + viewRange + 1) * tileSize;
+		glVertex3f(xf, 0.0f, zStart);
+		glVertex3f(xf, 0.0f, zEnd);
+	}
+
+	// Z方向の線
+	for (int z = camZ - viewRange; z <= camZ + viewRange; ++z)
+	{
+		float zf = z * tileSize;
+		float xStart = (camX - viewRange) * tileSize;
+		float xEnd = (camX + viewRange + 1) * tileSize;
+		glVertex3f(xStart, 0.0f, zf);
+		glVertex3f(xEnd, 0.0f, zf);
+	}
+	glEnd();
+}

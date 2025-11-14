@@ -1,5 +1,4 @@
-﻿#include <algorithm>
-#include "glut.h"
+﻿#include "glut.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "weapon.h"

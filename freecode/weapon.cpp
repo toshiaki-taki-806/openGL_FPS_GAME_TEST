@@ -1,4 +1,5 @@
 ﻿#include "glut.h"
+#include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "weapon.h"
@@ -123,7 +124,7 @@ void updateSpheres() {
 
 		// --- 速度更新 ---
 		it->velocity += acceleration * dt;
-		
+
 		// --- 位置更新 ---
 		it->prevPos = it->position;		//　前回の位置を保持
 		it->position += it->velocity * dt;

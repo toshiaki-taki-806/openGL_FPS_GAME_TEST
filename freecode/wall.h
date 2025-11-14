@@ -1,5 +1,8 @@
 #pragma once
+#include <vector>
+#include "glut.h"
 #include "glm/glm.hpp"
+#include "Material.h"
 
 struct Wall {
 	glm::vec3 pos;		// íÜêSà íu
@@ -22,4 +25,5 @@ void addWall(const glm::vec3& pos,
 	const glm::vec3& color,
 	MaterialType material);
 
+void addWall(const glm::vec3& pos, float width, float height, float depth, const glm::vec3& color);
 void drawWalls();

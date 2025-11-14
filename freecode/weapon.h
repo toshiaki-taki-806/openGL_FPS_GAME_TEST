@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <vector>
 #include "glm/glm.hpp"
+#include "camera.h"
 #include "Material.h"
 #include "wall.h"
 
@@ -56,6 +57,7 @@ struct LaserPointer {
 extern LaserPointer laserPointer;
 
 // プロトタイプ関数宣言
+// 発射関数
 void updateSpheres();
 bool SweepSphereAABB(const Sphere& s, const Wall& w);
 void drawSpheres(const glm::vec3& cameraPos);

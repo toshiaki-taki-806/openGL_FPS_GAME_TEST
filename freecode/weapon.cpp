@@ -4,7 +4,6 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "weapon.h"
 #include "camera.h"
-#include <algorithm>
 
 
 

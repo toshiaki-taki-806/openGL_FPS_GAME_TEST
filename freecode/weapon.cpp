@@ -221,7 +221,7 @@ void updateSpheres() {
 	}
 }
 
-void drawSpheres(const glm::vec3& cameraPos) {
+void drawSpheres(const glm::vec3& cameraPosition) {
 	
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
@@ -232,7 +232,7 @@ void drawSpheres(const glm::vec3& cameraPos) {
 		Sphere& s = spheres[i];
 		
 		// --- 描画 ---
-		float dist = glm::length(s.position - cameraPos);
+		float dist = glm::length(s.position - cameraPosition);
 		float scale = s.sphereRadius * s.renderScale / (dist * 0.05f + 1.0f);		// 距離による縮小
 
 		glPushMatrix();
@@ -249,7 +249,7 @@ void fireSphere(const glm::vec3& cameraPos, const glm::vec3& cameraFront, const 
 	Sphere s;
 	glm::vec3 right = glm::normalize(glm::cross(cameraFront, cameraUp));
 	// 発射位置をオフセット
-	s.position = cameraPos + right * s.offset.x + cameraUp * s.offset.y + cameraFront * s.offset.z;
+	s.position = cameraPos + right * GUN_MUZZLE_OFFSET.x + cameraUp * GUN_MUZZLE_OFFSET.y + cameraFront * GUN_MUZZLE_OFFSET.z;
 	// 方向
 	s.dir = glm::normalize(cameraFront);
 	
@@ -267,7 +267,8 @@ void drawLaserPointer() {
 
 	glPushAttrib(GL_CURRENT_BIT | GL_LINE_BIT);
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // 加算から通常ブレンドへ
+	glDepthMask(GL_TRUE);  // 深度を書き込む
 	glColor3ub(255, 0, 0);					// レーザーの色
 
 	// カメラ基準の発射位置
@@ -309,6 +310,43 @@ void drawLaserPointer() {
 	glPopAttrib();
 }
 
+// 弾の出る円筒の描画
+void drawGunMuzzle(const Camera& camera, float radius) {
+	glPushMatrix();
+
+	// カメラの右・上ベクトル
+	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
+	glm::vec3 camUp = camera.up;
+
+	// 銃口の基準位置（右・上オフセットのみ）
+	glm::vec3 basePos = camera.pos
+		+ camRight * GUN_MUZZLE_OFFSET.x
+		+ camUp * GUN_MUZZLE_OFFSET.y;
+
+	glTranslatef(basePos.x, basePos.y, basePos.z);
+
+	// gluCylinder は +Z方向に伸びるので、camera.front に向ける
+	glm::vec3 defaultDir(0.0f, 0.0f, 1.0f); // gluCylinder のローカル Z+
+	glm::vec3 targetDir = glm::normalize(camera.front);
+
+	// 回転軸と角度を計算
+	glm::vec3 axis = glm::cross(defaultDir, targetDir);
+	float len = glm::length(axis);
+
+	if (len > 1e-6f) {
+		axis /= len; // 正規化
+		float angle = glm::degrees(acos(glm::clamp(glm::dot(defaultDir, targetDir), -1.0f, 1.0f)));
+		glRotatef(angle, axis.x, axis.y, axis.z);
+	}
+
+	// 円筒描画（長さ = offset.z）
+	GLUquadric* quad = gluNewQuadric();
+	gluQuadricNormals(quad, GLU_SMOOTH);
+	gluCylinder(quad, radius, radius, GUN_MUZZLE_OFFSET.z-0.8f, 16, 1);
+	gluDeleteQuadric(quad);
+
+	glPopMatrix();
+}
 
 float getFireInterval() {
 	return fireInterval;

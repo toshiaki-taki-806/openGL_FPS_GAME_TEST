@@ -9,6 +9,7 @@
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
 const float airDensity = 1.225f;		// 空気:1.225f kg/m³,水:1000.0f kg/m³
 const float dragCoefficient = 0.295f;	// 球体の形状
+const glm::vec3 GUN_MUZZLE_OFFSET(0.2f, -0.3f, 2.4f);
 
 // ---- 他ファイルから参照する外部変数・関数 ----
 double getTimeSec();					// main.cppで定義された時間取得関数
@@ -23,7 +24,6 @@ struct Sphere {
 	glm::vec3 prevPos;				// 衝突判定に使用
 	glm::vec3 originPos;			// 弾の発射位置
 	glm::vec3 dir;					// 射撃方向（単位ベクトル）
-	glm::vec3 offset = glm::vec3(0.2f, -0.3f, 3.5f); // 視点からの発射オフセット
 	glm::vec3 velocity;				// 弾の速度ベクトル（初速 + 慣性）
 	glm::vec3 inheritedVel;			// プレイヤーの速度を加算
 	float length = 500.0f;			// 射程 m
@@ -61,7 +61,8 @@ extern LaserPointer laserPointer;
 void updateSpheres();
 bool SweepSphereAABB(const Sphere& s, const Wall& w);
 void drawSpheres(const glm::vec3& cameraPos);
-void fireSphere(const glm::vec3& cameraPos, const glm::vec3& cameraFront, const glm::vec3& cameraUp);
+void fireSphere(const glm::vec3& cameraPosition, const glm::vec3& cameraFront, const glm::vec3& cameraUp);
 void drawLaserPointer();
+void drawGunMuzzle(const Camera& camera, float radius);
 float getFireInterval();		// 連射間隔を取得
 void setFireInterval(float f);	// 設定も可能

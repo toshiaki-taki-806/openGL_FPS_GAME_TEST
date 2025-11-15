@@ -9,7 +9,7 @@ Camera camera;
 // vec3(x,y,z) x:右,y:上,z:奥行　右手座標系 yaw 0が+x方向,90が+Z方向
 void initCamera() {
 	camera.pos = glm::vec3(0.0f, 0.0f, 0.0f);		// 位置
-	camera.front = glm::vec3(0.0f, 0.0f, 1.0f);	// 前方ベクトル
+	camera.front = glm::vec3(0.0f, 0.0f, 1.0f);		// 前方ベクトル
 	camera.up = glm::vec3(0.0f, 1.0f, 0.0f);		// 上方向ベクトル
 	camera.yaw = 90.0f;	 // 初期向き
 	camera.pitch = 0.0f;

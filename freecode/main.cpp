@@ -194,13 +194,14 @@ void display()
 	// GLMのlookAtを使ってビュー行列を設定
 	applyCameraView();
 
-	drawGround();				// 地面
-	drawWalls();				// 壁
-	//drawCrosshair();			// クロスヘア
-	drawCameraInfo();			// デバッグ情報
-	drawSpheres(camera.pos);	// 弾丸
-	drawDebugSpheres();			// 弾のデバッグ情報
-	drawLaserPointer();			// 常時照射レーザーポインタ
+	drawGround();					// 地面
+	drawWalls();					// 壁
+	drawCrosshair();				// クロスヘア
+	drawCameraInfo();				// デバッグ情報
+	drawGunMuzzle(camera, 0.02f);	// 銃
+	drawSpheres(camera.pos);		// 弾丸
+	drawDebugSpheres();				// 弾のデバッグ情報
+	drawLaserPointer();				// 常時照射レーザーポインタ
 	glutSwapBuffers();
 }
 

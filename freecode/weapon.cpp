@@ -15,50 +15,82 @@ auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
 
 // --- Analytical CCD ---
 bool SweepSphereAABB(Sphere& s, const Wall& w) {
+	// Axis-Aligned Bounding Box (AABB) 直方体の境界を計算
 	glm::vec3 boxMin = w.pos - glm::vec3(w.width, w.height, w.depth) * 0.5f;
 	glm::vec3 boxMax = w.pos + glm::vec3(w.width, w.height, w.depth) * 0.5f;
 
-	glm::vec3 start = s.prevPos;
-	glm::vec3 end = s.position;
-	glm::vec3 d = end - start;
+	glm::vec3 start = s.prevPos;		// 前フレーム位置
+	glm::vec3 end = s.position;			// 現フレーム位置
+	glm::vec3 d = end - start;			// 線分
 
-	float tmin = 0.0f;
-	float tmax = 1.0f;
+	// 弾が手前の場合は,1以上の値となる、既に過ぎている場合は-の値となる
+	// 計算で0-1の範囲となる場合は、衝突しているの考えられる
+	float tmin = 0.0f;			// 衝突開始時刻
+	float tmax = 1.0f;			// 衝突終了時刻
 
-	for (int i = 0; i < 3; ++i)
+	for (int i = 0; i < 3; ++i)		// x,y,z軸毎に判定
 	{
-		if (std::abs(d[i]) < 1e-8f)
+		if (std::abs(d[i]) < 1e-8f)		// 成分の絶対値が微小の場合
 		{
 			if (start[i] + s.sphereRadius < boxMin[i] || start[i] - s.sphereRadius > boxMax[i])
-				return false; // 衝突なし
+				return false; // 移動しない軸は、前フレーム位置が範囲外なら衝突なし
 		}
 		else
 		{
 			float invD = 1.0f / d[i];
-			float t1 = (boxMin[i] - start[i] - s.sphereRadius) * invD;
-			float t2 = (boxMax[i] - start[i] + s.sphereRadius) * invD;
-			if (t1 > t2) std::swap(t1, t2);
-			tmin = std::max(tmin, t1);
-			tmax = std::min(tmax, t2);
-			if (tmin > tmax) return false; // 衝突なし
+			float t1 = (boxMin[i] - start[i] - s.sphereRadius) * invD;		// ボックス内に入った時刻
+			float t2 = (boxMax[i] - start[i] + s.sphereRadius) * invD;		// ボックス外に出た時刻
+			if (t1 > t2) std::swap(t1, t2);		// 進行方向によってスワップ
+			tmin = std::max(tmin, t1);			// 各軸で最後にボックスを入った時刻
+			tmax = std::min(tmax, t2);			// 各軸で最初にボックスを出た時刻
+			if (tmin > tmax) return false; // 線分がボックスに入る前から出ている時、線分が箱と交差することはない
 		}
 	}
 
-	// 衝突した場合の位置
+	// 衝突した場合の弾の位置調整
 	glm::vec3 hitPos = start + d * tmin;
 
-	// 最近接点（clampなしで手計算）
+	// 最近接点 AABB の表面上で、球の中心に最も近い点 弾の中心:hitposとAABB表面は一致しない
 	glm::vec3 closestPoint;
 	for (int i = 0; i < 3; ++i)
 	{
-		if (hitPos[i] < boxMin[i]) closestPoint[i] = boxMin[i];
+		if (hitPos[i] < boxMin[i]) closestPoint[i] = boxMin[i];		
 		else if (hitPos[i] > boxMax[i]) closestPoint[i] = boxMax[i];
-		else closestPoint[i] = hitPos[i];
+		else closestPoint[i] = hitPos[i];		// AABB範囲内
 	}
 
-	glm::vec3 diff = hitPos - closestPoint;
-	float len = glm::length(diff);
-	glm::vec3 normal = (len > 1e-8f) ? diff / len : glm::vec3(0, 1, 0);
+	glm::vec3 diff = hitPos - closestPoint;		// 弾の中心->AABB表面の報告ベクトル
+	float len = glm::length(diff);				// 正規化
+	// 衝突法線
+	glm::vec3 normal;
+	if (len > 1e-8f)
+	{
+		// 普通の衝突 → diff から法線決定
+		normal = diff / len;
+	}
+	else
+	{
+		// --- めり込み時の法線復元 ---------------------------
+
+		// 球の中心とボックスの中心の差
+		glm::vec3 delta = s.position - w.pos;
+
+		// ボックスの半サイズ
+		glm::vec3 half = glm::vec3(w.width, w.height, w.depth) * 0.5f;
+
+		// 各軸のめり込み量（絶対距離）
+		float dx = half.x - std::abs(delta.x);
+		float dy = half.y - std::abs(delta.y);
+		float dz = half.z - std::abs(delta.z);
+
+		// 最もめり込んでいる軸を選択
+		if (dx < dy && dx < dz)
+			normal = glm::vec3((delta.x > 0 ? 1 : -1), 0, 0);
+		else if (dy < dz)
+			normal = glm::vec3(0, (delta.y > 0 ? 1 : -1), 0);
+		else
+			normal = glm::vec3(0, 0, (delta.z > 0 ? 1 : -1));
+	}
 
 	// -- - 衝突後の位置に修正-- -
 	s.position = hitPos + normal * s.sphereRadius;
@@ -67,7 +99,24 @@ bool SweepSphereAABB(Sphere& s, const Wall& w) {
 	float vNormal = glm::dot(s.velocity, normal);
 	if (vNormal < 0)
 	{
-		s.velocity -= 2.0f * vNormal * normal; // 完全反射
+		//s.velocity -= 2.0f * vNormal * normal; // 完全反射
+
+		glm::vec3 v = s.velocity;
+
+		// --- 速度を法線方向 / 接線方向に分解 ---
+		float vNormal = glm::dot(v, normal);
+		glm::vec3 vN = vNormal * normal;     // 法線方向
+		glm::vec3 vT = v - vN;               // 接線方向
+
+		// --- 反発係数（法線方向の反転） ---
+		glm::vec3 vN_new = -vN * w.restitution;
+
+		// --- 摩擦係数（接線方向の減衰） ---
+		glm::vec3 vT_new = vT * (1.0f - w.friction);
+
+		// --- 合成して新しい速度に ---
+		s.velocity = vN_new + vT_new;
+
 	}
 
 }

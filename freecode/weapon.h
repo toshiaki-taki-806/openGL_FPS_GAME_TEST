@@ -31,7 +31,7 @@ struct Sphere {
 	double duration = 10.0;			// 生存時間 s
 	float sphereRadius = 5.56f/1000/2;	// 弾の半径 m
 	float renderScale = 100.0f;		// 描画倍率
-	float speed = 25.0f;			// 初速 m/s 5.56*45mm NATO弾:940.0f
+	float speed = 20.0f;			// 初速 m/s 5.56*45mm NATO弾:940.0f
 	float mass = 4.02f / 1000;		// 弾の重量gからkgへ 5.56*45mm NATO弾:4.02f g
 	bool initialized = false;		// 初回初期化フラグ
 };

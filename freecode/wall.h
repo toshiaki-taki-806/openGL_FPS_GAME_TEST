@@ -25,5 +25,5 @@ void addWall(const glm::vec3& pos,
 	const glm::vec3& color,
 	MaterialType material);
 
-void addWall(const glm::vec3& pos, float width, float height, float depth, const glm::vec3& color);
+void addWall(const glm::vec3& pos, float width, float height, float depth, const glm::vec3& color, MaterialType material);
 void drawWalls();

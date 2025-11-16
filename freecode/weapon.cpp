@@ -4,8 +4,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "weapon.h"
 #include "camera.h"
-
-
+#include <algorithm>
 
 std::vector<Sphere> spheres;
 std::vector<DebugSphereInfo> debugSpheres;
@@ -15,9 +14,9 @@ auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
 
 // --- Analytical CCD ---
 bool SweepSphereAABB(Sphere& s, const Wall& w) {
-	// Axis-Aligned Bounding Box (AABB) 直方体の境界を計算
-	glm::vec3 boxMin = w.pos - glm::vec3(w.width, w.height, w.depth) * 0.5f;
-	glm::vec3 boxMax = w.pos + glm::vec3(w.width, w.height, w.depth) * 0.5f;
+	// Axis-Aligned Bounding Box (AABB) 直方体の境界
+	glm::vec3 boxMin = w.AABBmin;
+	glm::vec3 boxMax = w.AABBmax;
 
 	glm::vec3 start = s.prevPos;		// 前フレーム位置
 	glm::vec3 end = s.position;			// 現フレーム位置
@@ -121,7 +120,6 @@ bool SweepSphereAABB(Sphere& s, const Wall& w) {
 
 }
 
-
 void updateSpheres() {
 	float dt = static_cast<float>(PHYSICS_INTERVAL);	// 物理演算の間隔
 	double currentTime = getTimeSec();					// 時刻を取得
@@ -221,7 +219,7 @@ void updateSpheres() {
 	}
 }
 
-void drawSpheres(const glm::vec3& cameraPosition) {
+void drawSpheres() {
 	
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
@@ -232,7 +230,7 @@ void drawSpheres(const glm::vec3& cameraPosition) {
 		Sphere& s = spheres[i];
 		
 		// --- 描画 ---
-		float dist = glm::length(s.position - cameraPosition);
+		float dist = glm::length(s.position - camera.pos);
 		float scale = s.sphereRadius * s.renderScale / (dist * 0.05f + 1.0f);		// 距離による縮小
 
 		glPushMatrix();
@@ -245,13 +243,13 @@ void drawSpheres(const glm::vec3& cameraPosition) {
 }
 
 // 発射関数
-void fireSphere(const glm::vec3& cameraPos, const glm::vec3& cameraFront, const glm::vec3& cameraUp) {
+void fireSphere() {
 	Sphere s;
-	glm::vec3 right = glm::normalize(glm::cross(cameraFront, cameraUp));
+	glm::vec3 right = glm::normalize(glm::cross(camera.front, camera.up));
 	// 発射位置をオフセット
-	s.position = cameraPos + right * GUN_MUZZLE_OFFSET.x + cameraUp * GUN_MUZZLE_OFFSET.y + cameraFront * GUN_MUZZLE_OFFSET.z;
+	s.position = camera.pos + right * GUN_MUZZLE_OFFSET.x + camera.up * GUN_MUZZLE_OFFSET.y + camera.front * GUN_MUZZLE_OFFSET.z;
 	// 方向
-	s.dir = glm::normalize(cameraFront);
+	s.dir = glm::normalize(camera.front);
 	
 	// 出現時間→生存時間計算用
 	s.spawnTime = getTimeSec();
@@ -311,7 +309,7 @@ void drawLaserPointer() {
 }
 
 // 弾の出る円筒の描画
-void drawGunMuzzle(const Camera& camera, float radius) {
+void drawGunMuzzle(float radius) {
 	glPushMatrix();
 
 	// カメラの右・上ベクトル
@@ -342,10 +340,37 @@ void drawGunMuzzle(const Camera& camera, float radius) {
 	// 円筒描画（長さ = offset.z）
 	GLUquadric* quad = gluNewQuadric();
 	gluQuadricNormals(quad, GLU_SMOOTH);
-	gluCylinder(quad, radius, radius, GUN_MUZZLE_OFFSET.z-0.8f, 16, 1);
+	gluCylinder(quad, radius, radius, GUN_MUZZLE_OFFSET.z, 16, 1);
 	gluDeleteQuadric(quad);
 
 	glPopMatrix();
+}
+
+void resolveGunLineCollision(const std::vector<Wall>& walls) {
+	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
+	glm::vec3 camUp = camera.up;
+
+	glm::vec3 lineStart = camera.pos + camRight * GUN_MUZZLE_OFFSET.x + camUp * GUN_MUZZLE_OFFSET.y;
+	glm::vec3 lineEnd = lineStart + glm::normalize(camera.front) * GUN_MUZZLE_OFFSET.z;
+
+	for (const auto& w : walls) {
+		// 線分とAABBの簡易交差判定
+		float minX = std::min(lineStart.x, lineEnd.x);
+		float maxX = std::max(lineStart.x, lineEnd.x);
+		float minY = std::min(lineStart.y, lineEnd.y);
+		float maxY = std::max(lineStart.y, lineEnd.y);
+		float minZ = std::min(lineStart.z, lineEnd.z);
+		float maxZ = std::max(lineStart.z, lineEnd.z);
+
+		bool overlapX = !(maxX < w.AABBmin.x || minX > w.AABBmax.x);
+		bool overlapY = !(maxY < w.AABBmin.y || minY > w.AABBmax.y);
+		bool overlapZ = !(maxZ < w.AABBmin.z || minZ > w.AABBmax.z);
+
+		if (overlapX && overlapY && overlapZ) {
+			// 衝突
+			camera.pos -= glm::normalize(camera.front) * 0.05f; // 適当な押し戻し量
+		}
+	}
 }
 
 float getFireInterval() {

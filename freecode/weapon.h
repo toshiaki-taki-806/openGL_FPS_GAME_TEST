@@ -9,7 +9,8 @@
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
 const float airDensity = 1.225f;		// 空気:1.225f kg/m³,水:1000.0f kg/m³
 const float dragCoefficient = 0.295f;	// 球体の形状
-const glm::vec3 GUN_MUZZLE_OFFSET(0.2f, -0.3f, 2.4f);
+const glm::vec3 GUN_MUZZLE_OFFSET(-0.2f, -0.3f, 2.4f);
+const float GUN_RADIUS = 0.02f;
 
 // ---- 他ファイルから参照する外部変数・関数 ----
 double getTimeSec();					// main.cppで定義された時間取得関数
@@ -31,7 +32,7 @@ struct Sphere {
 	double duration = 10.0;			// 生存時間 s
 	float sphereRadius = 5.56f/1000/2;	// 弾の半径 m
 	float renderScale = 100.0f;		// 描画倍率
-	float speed = 20.0f;			// 初速 m/s 5.56*45mm NATO弾:940.0f
+	float speed = 120.0f;			// 初速 m/s 5.56*45mm NATO弾:940.0f
 	float mass = 4.02f / 1000;		// 弾の重量gからkgへ 5.56*45mm NATO弾:4.02f g
 	bool initialized = false;		// 初回初期化フラグ
 };
@@ -50,7 +51,7 @@ struct LaserPointer {
 	bool active = false;
 	glm::vec3 startPos;      // 発射位置
 	glm::vec3 dir;           // 発射方向（正規化済み推奨）
-	glm::vec3 offset = glm::vec3(0.2f, -0.4f, 1.4f); // カメラ基準オフセット
+	glm::vec3 offset = glm::vec3(-0.2f, -0.4f, 1.4f); // カメラ基準オフセット
 	float length = 100.0f;     // 最大長さ
 	float radius = 0.005f;    // 円柱半径
 };
@@ -60,9 +61,10 @@ extern LaserPointer laserPointer;
 // 発射関数
 void updateSpheres();
 bool SweepSphereAABB(const Sphere& s, const Wall& w);
-void drawSpheres(const glm::vec3& cameraPos);
-void fireSphere(const glm::vec3& cameraPosition, const glm::vec3& cameraFront, const glm::vec3& cameraUp);
+void drawSpheres();
+void fireSphere();
 void drawLaserPointer();
-void drawGunMuzzle(const Camera& camera, float radius);
+void drawGunMuzzle(float radius);
+void resolveGunLineCollision(const std::vector<Wall>& walls);
 float getFireInterval();		// 連射間隔を取得
 void setFireInterval(float f);	// 設定も可能

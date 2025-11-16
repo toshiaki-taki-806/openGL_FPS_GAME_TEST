@@ -1,8 +1,8 @@
 壁の衝突判定
+弾　OK
+銃
+プレイヤー
 
-
-auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
-で摩擦係数と反発係数を設定するのをやめる→シーン毎に設定できるようにする。
 
 
 設定をtxt?にしてそこから呼び込む

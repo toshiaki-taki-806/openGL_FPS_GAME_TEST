@@ -196,10 +196,10 @@ void display()
 
 	drawGround();					// 地面
 	drawWalls();					// 壁
-	drawCrosshair();				// クロスヘア
+	//drawCrosshair();				// クロスヘア
 	drawCameraInfo();				// デバッグ情報
-	drawGunMuzzle(camera, 0.02f);	// 銃
-	drawSpheres(camera.pos);		// 弾丸
+	drawGunMuzzle(GUN_RADIUS);	// 銃
+	drawSpheres();		// 弾丸
 	drawDebugSpheres();				// 弾のデバッグ情報
 	drawLaserPointer();				// 常時照射レーザーポインタ
 	glutSwapBuffers();
@@ -267,7 +267,7 @@ void mouseClick(int button, int state, int x, int y) {
 	case GLUT_RIGHT_BUTTON:
 		index = 2;
 		if (state == GLUT_DOWN) {
-			fireSphere(camera.pos, camera.front, camera.up);	// 弾丸発射
+			fireSphere();	// 弾丸発射
 		}
 		break;
 	}
@@ -353,6 +353,9 @@ void update()
 		// --- キーによる移動（水平移動） ---
 		handleMovement();
 
+		// 壁との衝突判定
+		resolveGunLineCollision(g_walls);
+
 		// 空中にいる場合の重力処理
 		if (!onGround)
 		{
@@ -378,7 +381,7 @@ void update()
 			double shotTime = getTimeSec();
 			if (shotTime - lastShotTime >= getFireInterval())
 			{
-				fireSphere(camera.pos, camera.front, camera.up);
+				fireSphere();
 				lastShotTime = shotTime;
 			}
 		}

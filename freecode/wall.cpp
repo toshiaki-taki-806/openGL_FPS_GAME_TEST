@@ -21,6 +21,18 @@ void addWall(const glm::vec3& pos,
 	w.material = material;
 	w.friction = g_materialTable[static_cast<int>(material)].friction;
 	w.restitution = g_materialTable[static_cast<int>(material)].restitution;
+
+	// --- AABB ‚ðŒvŽZ‚µ‚Ä‘ã“ü ---
+	w.AABBmin = glm::vec3(
+		pos.x - width * 0.5f,
+		pos.y - height * 0.5f,
+		pos.z - depth * 0.5f
+	);
+	w.AABBmax = glm::vec3(
+		pos.x + width * 0.5f,
+		pos.y + height * 0.5f,
+		pos.z + depth * 0.5f
+	);
 	g_walls.push_back(w);
 }
 

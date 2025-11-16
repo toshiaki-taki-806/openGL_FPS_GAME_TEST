@@ -12,6 +12,8 @@ struct Wall {
 	glm::vec3 color;	// RGB
 	float friction;		// –€CŒW”
 	float restitution;	// ”½”­ŒW”
+	glm::vec3 AABBmin;
+	glm::vec3 AABBmax;
 
 	MaterialType material;		// Ş¿ƒ^ƒCƒv
 };

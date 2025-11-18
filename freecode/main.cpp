@@ -52,6 +52,9 @@ bool keyState[256] = { false };		// キーボードが押されたままかの�
 // マウス　左=0, 中=1, 右=2
 bool mouseState[3] = { false };		// マウスのボタンの状態
 
+static int mouseDx;
+static int mouseDy;
+
 // 時間取得関数=glutInit()からの経過時間を秒単位で返す関数
 double getTimeSec() {
 	return glutGet(GLUT_ELAPSED_TIME) / 1000.0;
@@ -238,24 +241,13 @@ void processMouseMotion(int x, int y)
 	}
 
 	// マウスの移動量を計算
-	int dx = x - windowCenterX; // X方向の差分
-	int dy = y - windowCenterY; // Y方向の差分
-
-	// カメラの角度を更新
-	camera.yaw += dx * MOUSE_SENSITIVITY;   // 左右回転
-	camera.pitch -= dy * MOUSE_SENSITIVITY; // 上下回転
-
-	// ピッチ角の制限（真上/真下に向かないように）
-	if (camera.pitch > 89.0f) camera.pitch = 89.0f;
-	if (camera.pitch < -89.0f) camera.pitch = -89.0f;
-
-	// GLMの前方向ベクトルを更新
-	updateCameraFront(); 
+	mouseDx += x - windowCenterX; // X方向の差分
+	mouseDy += y - windowCenterY; // Y方向の差分
 
 	// マウスを再びウィンドウ中央に戻す
 	glutWarpPointer(windowCenterX, windowCenterY);
 	ignoreNextWarp = true; // このWarpによるイベントを無視
-	glutPostRedisplay();   // 描画更新要求
+	//glutPostRedisplay();   // 描画更新要求
 }
 
 // マウスのクリック　左=0, 中=1, 右=2
@@ -322,12 +314,12 @@ void handleMovement() {
 		else
 			speed_mps = MOVE_SPEED;
 
+		// 毎フレームのプレイヤー速度を記録（地面にいるときのみ）
+		camera.moveDir = normalize(moveDir);
+
 		// normalize(moveDir)で方向のみで大きさ1へ変換。　m/sの速度を掛けて実際の速度を算出
 		moveDir = normalize(moveDir) * speed_mps;
 	}
-
-	// 毎フレームのプレイヤー速度を記録（地面にいるときのみ）
-	playerVelocity = moveDir;
 
 	// 実際に移動
 	camera.pos += moveDir * static_cast<float>(PHYSICS_INTERVAL);
@@ -341,6 +333,7 @@ void handleMovement() {
 	camera.pos.y = (onGround) ? GROUND_Y + (isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT) : camera.pos.y;
 }
 
+
 // ==== 物理更新・描画制御 ====
 // 描画と物理演算を別タイミングで更新する関数
 void update()
@@ -349,7 +342,24 @@ void update()
 
 	// --- 物理演算（一定間隔で複数回実行） ---
 	while (current - lastPhysicsTime >= PHYSICS_INTERVAL)
-	{
+	{	
+		camera.prevPos = camera.pos;
+
+		// カメラの角度を更新
+		float dx = mouseDx;
+		float dy = mouseDy;
+		mouseDx = 0;
+		mouseDy = 0;
+		camera.prevYaw = camera.yaw;
+		camera.prevPitch = camera.pitch;
+		camera.yaw += dx * MOUSE_SENSITIVITY;   // 左右回転
+		camera.pitch -= dy * MOUSE_SENSITIVITY; // 上下回転
+		// ピッチ角の制限（真上/真下に向かないように）
+		if (camera.pitch > 89.0f) camera.pitch = 89.0f;
+		if (camera.pitch < -89.0f) camera.pitch = -89.0f;
+		// GLMの前方向ベクトルを更新
+		updateCameraFront();
+
 		// --- キーによる移動（水平移動） ---
 		handleMovement();
 

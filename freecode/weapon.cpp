@@ -368,7 +368,15 @@ void resolveGunLineCollision(const std::vector<Wall>& walls) {
 
 		if (overlapX && overlapY && overlapZ) {
 			// 衝突
-			camera.pos -= glm::normalize(camera.front) * 0.05f; // 適当な押し戻し量
+			
+			// 位置を戻す
+			camera.pos = camera.prevPos;
+			camera.pos -= camera.moveDir * 0.001f;
+
+			// 視点を戻す
+			camera.yaw = camera.prevYaw;
+			camera.pitch = camera.prevPitch;
+			updateCameraFront();
 		}
 	}
 }

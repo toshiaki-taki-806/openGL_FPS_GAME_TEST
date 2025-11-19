@@ -19,6 +19,7 @@ const float MOVE_SPEED = 4.0f;	// 通常の移動速度　m/s
 const float DASH_SPEED = 6.0f;	// ダッシュ時の速度 m/s
 float speed_mps;				// 速度をメートル　毎　秒とする計算用変数
 bool isDashing = false;			// ダッシュフラグ
+const float P_RADIUS = 0.5f;	// 身体の半径
 
 //　しゃがみ関連
 bool isCrouching = false;		//　しゃがみフラグ
@@ -201,8 +202,8 @@ void display()
 	drawWalls();					// 壁
 	//drawCrosshair();				// クロスヘア
 	drawCameraInfo();				// デバッグ情報
-	drawGunMuzzle(GUN_RADIUS);	// 銃
-	drawSpheres();		// 弾丸
+	drawGunMuzzle(GUN_RADIUS);		// 銃
+	drawSpheres();					// 弾丸
 	drawDebugSpheres();				// 弾のデバッグ情報
 	drawLaserPointer();				// 常時照射レーザーポインタ
 	glutSwapBuffers();
@@ -365,6 +366,7 @@ void update()
 
 		// 壁との衝突判定
 		resolveGunLineCollision(g_walls);
+		resolvePlayerCollision(g_walls);
 
 		// 空中にいる場合の重力処理
 		if (!onGround)

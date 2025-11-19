@@ -41,46 +41,49 @@ void drawWalls()
 	for (const auto& w : g_walls)
 	{
 		// 壁の中心を基準に計算
-		float minX = w.pos.x - w.width * 0.5f;
-		float maxX = w.pos.x + w.width * 0.5f;
-		float minY = w.pos.y - w.height * 0.5f;
-		float maxY = w.pos.y + w.height * 0.5f;
-		float minZ = w.pos.z - w.depth * 0.5f;
-		float maxZ = w.pos.z + w.depth * 0.5f;
+		const glm::vec3& min = w.AABBmin;
+		const glm::vec3& max = w.AABBmax;
 
 		// 塗りつぶし
 		glColor3ub(w.color.r, w.color.g, w.color.b);
 		glBegin(GL_QUADS);
+
 		// 前面
-		glVertex3f(minX, minY, maxZ);
-		glVertex3f(maxX, minY, maxZ);
-		glVertex3f(maxX, maxY, maxZ);
-		glVertex3f(minX, maxY, maxZ);
+		glVertex3f(min.x, min.y, max.z);
+		glVertex3f(max.x, min.y, max.z);
+		glVertex3f(max.x, max.y, max.z);
+		glVertex3f(min.x, max.y, max.z);
+
 		// 背面
-		glVertex3f(minX, minY, minZ);
-		glVertex3f(maxX, minY, minZ);
-		glVertex3f(maxX, maxY, minZ);
-		glVertex3f(minX, maxY, minZ);
+		glVertex3f(min.x, min.y, min.z);
+		glVertex3f(max.x, min.y, min.z);
+		glVertex3f(max.x, max.y, min.z);
+		glVertex3f(min.x, max.y, min.z);
+
 		// 左側面
-		glVertex3f(minX, minY, minZ);
-		glVertex3f(minX, minY, maxZ);
-		glVertex3f(minX, maxY, maxZ);
-		glVertex3f(minX, maxY, minZ);
+		glVertex3f(min.x, min.y, min.z);
+		glVertex3f(min.x, min.y, max.z);
+		glVertex3f(min.x, max.y, max.z);
+		glVertex3f(min.x, max.y, min.z);
+
 		// 右側面
-		glVertex3f(maxX, minY, minZ);
-		glVertex3f(maxX, minY, maxZ);
-		glVertex3f(maxX, maxY, maxZ);
-		glVertex3f(maxX, maxY, minZ);
+		glVertex3f(max.x, min.y, min.z);
+		glVertex3f(max.x, min.y, max.z);
+		glVertex3f(max.x, max.y, max.z);
+		glVertex3f(max.x, max.y, min.z);
+
 		// 上面
-		glVertex3f(minX, maxY, minZ);
-		glVertex3f(maxX, maxY, minZ);
-		glVertex3f(maxX, maxY, maxZ);
-		glVertex3f(minX, maxY, maxZ);
+		glVertex3f(min.x, max.y, min.z);
+		glVertex3f(max.x, max.y, min.z);
+		glVertex3f(max.x, max.y, max.z);
+		glVertex3f(min.x, max.y, max.z);
+
 		// 底面
-		glVertex3f(minX, minY, minZ);
-		glVertex3f(maxX, minY, minZ);
-		glVertex3f(maxX, minY, maxZ);
-		glVertex3f(minX, minY, maxZ);
+		glVertex3f(min.x, min.y, min.z);
+		glVertex3f(max.x, min.y, min.z);
+		glVertex3f(max.x, min.y, max.z);
+		glVertex3f(min.x, min.y, max.z);
+
 		glEnd();
 
 		// ワイヤーフレーム
@@ -88,20 +91,20 @@ void drawWalls()
 		glLineWidth(2.0f);
 		glBegin(GL_LINES);
 		// 底面
-		glVertex3f(minX, minY, minZ); glVertex3f(maxX, minY, minZ);
-		glVertex3f(maxX, minY, minZ); glVertex3f(maxX, minY, maxZ);
-		glVertex3f(maxX, minY, maxZ); glVertex3f(minX, minY, maxZ);
-		glVertex3f(minX, minY, maxZ); glVertex3f(minX, minY, minZ);
+		glVertex3f(min.x, min.y, min.z); glVertex3f(max.x, min.y, min.z);
+		glVertex3f(max.x, min.y, min.z); glVertex3f(max.x, min.y, max.z);
+		glVertex3f(max.x, min.y, max.z); glVertex3f(min.x, min.y, max.z);
+		glVertex3f(min.x, min.y, max.z); glVertex3f(min.x, min.y, min.z);
 		// 上面
-		glVertex3f(minX, maxY, minZ); glVertex3f(maxX, maxY, minZ);
-		glVertex3f(maxX, maxY, minZ); glVertex3f(maxX, maxY, maxZ);
-		glVertex3f(maxX, maxY, maxZ); glVertex3f(minX, maxY, maxZ);
-		glVertex3f(minX, maxY, maxZ); glVertex3f(minX, maxY, minZ);
+		glVertex3f(min.x, max.y, min.z); glVertex3f(max.x, max.y, min.z);
+		glVertex3f(max.x, max.y, min.z); glVertex3f(max.x, max.y, max.z);
+		glVertex3f(max.x, max.y, max.z); glVertex3f(min.x, max.y, max.z);
+		glVertex3f(min.x, max.y, max.z); glVertex3f(min.x, max.y, min.z);
 		// 垂直辺
-		glVertex3f(minX, minY, minZ); glVertex3f(minX, maxY, minZ);
-		glVertex3f(maxX, minY, minZ); glVertex3f(maxX, maxY, minZ);
-		glVertex3f(maxX, minY, maxZ); glVertex3f(maxX, maxY, maxZ);
-		glVertex3f(minX, minY, maxZ); glVertex3f(minX, maxY, maxZ);
+		glVertex3f(min.x, min.y, min.z); glVertex3f(min.x, max.y, min.z);
+		glVertex3f(max.x, min.y, min.z); glVertex3f(max.x, max.y, min.z);
+		glVertex3f(max.x, min.y, max.z); glVertex3f(max.x, max.y, max.z);
+		glVertex3f(min.x, min.y, max.z); glVertex3f(min.x, max.y, max.z);
 		glEnd();
 	}
 }

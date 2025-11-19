@@ -17,7 +17,8 @@ double getTimeSec();					// main.cppで定義された時間取得関数
 extern const double PHYSICS_INTERVAL;	// main.cppで定義された物理演算の時間間隔
 extern const float GROUND_Y;			// main.cppで定義された地面の座標
 extern const float GRAVITY;				// main.cppで定義された重力加速度
-extern glm::vec3 playerVelocity;		// main.cppにあるプレイヤーの移動ベクトル
+extern const float STAND_HEIGHT;		// 目線の高さ
+extern const float P_RADIUS;			// 身体の半径
 
 // 弾の定義
 struct Sphere {
@@ -66,5 +67,6 @@ void fireSphere();
 void drawLaserPointer();
 void drawGunMuzzle(float radius);
 void resolveGunLineCollision(const std::vector<Wall>& walls);
+void resolvePlayerCollision(const std::vector<Wall>& walls);
 float getFireInterval();		// 連射間隔を取得
 void setFireInterval(float f);	// 設定も可能

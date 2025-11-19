@@ -11,7 +11,6 @@ std::vector<DebugSphereInfo> debugSpheres;
 LaserPointer laserPointer;
 auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
 
-
 // --- Analytical CCD ---
 bool SweepSphereAABB(Sphere& s, const Wall& w) {
 	// Axis-Aligned Bounding Box (AABB) 直方体の境界
@@ -180,7 +179,7 @@ void updateSpheres() {
 		// --- CCD 衝突判定 ---
 		for (const Wall& w : g_walls) {
 			if (SweepSphereAABB(*it, w)) {
-				printf("衝突しました！球位置=(%.3f, %.3f, %.3f)\n", it->position.x, it->position.y, it->position.z);
+				//printf("衝突しました！球位置=(%.3f, %.3f, %.3f)\n", it->position.x, it->position.y, it->position.z);
 			}
 		}
 
@@ -255,7 +254,7 @@ void fireSphere() {
 	s.spawnTime = getTimeSec();
 
 	// ★ プレイヤーの慣性をコピー（走っていれば弾にも横速度が乗る）
-	s.inheritedVel = playerVelocity;
+	s.inheritedVel = camera.moveDir;
 
 	spheres.push_back(s); // 弾を追加
 }
@@ -346,32 +345,32 @@ void drawGunMuzzle(float radius) {
 	glPopMatrix();
 }
 
-void resolveGunLineCollision(const std::vector<Wall>& walls) {
-	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
-	glm::vec3 camUp = camera.up;
+bool intersectPlayerAABB(float _bottomY, float _topY, const glm::vec3& bmin, const glm::vec3& bmax) {
+	// --- 1) Y 高さ範囲が重なっていなければ衝突しない ---
+	bool overlapY = !(_topY < bmin.y || _bottomY > bmax.y);
+	if (!overlapY) return false;
 
-	glm::vec3 lineStart = camera.pos + camRight * GUN_MUZZLE_OFFSET.x + camUp * GUN_MUZZLE_OFFSET.y;
-	glm::vec3 lineEnd = lineStart + glm::normalize(camera.front) * GUN_MUZZLE_OFFSET.z;
+	// --- 2) XZ の円 vs AABB の最近点距離チェック ---
+	float closestX = std::max(bmin.x, std::min(camera.pos.x, bmax.x));
+	float closestZ = std::max(bmin.z, std::min(camera.pos.z, bmax.z));
 
-	for (const auto& w : walls) {
-		// 線分とAABBの簡易交差判定
-		float minX = std::min(lineStart.x, lineEnd.x);
-		float maxX = std::max(lineStart.x, lineEnd.x);
-		float minY = std::min(lineStart.y, lineEnd.y);
-		float maxY = std::max(lineStart.y, lineEnd.y);
-		float minZ = std::min(lineStart.z, lineEnd.z);
-		float maxZ = std::max(lineStart.z, lineEnd.z);
+	float dx = camera.pos.x - closestX;
+	float dz = camera.pos.z - closestZ;
 
-		bool overlapX = !(maxX < w.AABBmin.x || minX > w.AABBmax.x);
-		bool overlapY = !(maxY < w.AABBmin.y || minY > w.AABBmax.y);
-		bool overlapZ = !(maxZ < w.AABBmin.z || minZ > w.AABBmax.z);
+	float dist2 = dx * dx + dz * dz;
+	return dist2 <= P_RADIUS * P_RADIUS;
+}
 
-		if (overlapX && overlapY && overlapZ) {
+void resolvePlayerCollision(const std::vector<Wall>& walls) {
+	float topY = camera.pos.y + 0.2f;		// 目線の高さ+20cm
+	float bottomY = camera.pos.y - STAND_HEIGHT;	// 要修正
+
+	for (auto& w : walls) {
+		if (intersectPlayerAABB(bottomY, topY, w.AABBmin, w.AABBmax)) {
 			// 衝突
-			
 			// 位置を戻す
 			camera.pos = camera.prevPos;
-			camera.pos -= camera.moveDir * 0.001f;
+			camera.pos -= camera.moveDir * 0.01f;
 
 			// 視点を戻す
 			camera.yaw = camera.prevYaw;
@@ -380,6 +379,63 @@ void resolveGunLineCollision(const std::vector<Wall>& walls) {
 		}
 	}
 }
+
+bool intersectSegmentAABB(
+	const glm::vec3& p0,
+	const glm::vec3& p1,
+	const glm::vec3& bmin,
+	const glm::vec3& bmax
+	)
+{
+	glm::vec3 d = p1 - p0;  // 線分方向
+	float tmin = 0.0f;
+	float tmax = 1.0f;
+
+	for (int i = 0; i < 3; i++) {
+		if (fabs(d[i]) < 1e-6f) {
+			// 線分がこの軸と平行 → AABB 範囲外なら交差なし
+			if (p0[i] < bmin[i] || p0[i] > bmax[i])
+				return false;
+		}
+		else {
+			float ood = 1.0f / d[i];
+			float t1 = (bmin[i] - p0[i]) * ood;
+			float t2 = (bmax[i] - p0[i]) * ood;
+
+			if (t1 > t2) std::swap(t1, t2);
+
+			tmin = std::max(tmin, t1);
+			tmax = std::min(tmax, t2);
+
+			if (tmin > tmax)
+				return false; // 区間が消滅 → 交差なし
+		}
+	}
+
+	return true; // t ∈ [0,1] で交差する
+}
+
+void resolveGunLineCollision(const std::vector<Wall>& walls) {
+	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
+	glm::vec3 camUp = camera.up;
+
+	glm::vec3 lineStart = camera.pos + camRight * GUN_MUZZLE_OFFSET.x + camUp * GUN_MUZZLE_OFFSET.y;
+	glm::vec3 lineEnd = lineStart + glm::normalize(camera.front) * GUN_MUZZLE_OFFSET.z;
+
+	for (const auto& w : walls) {
+		if (intersectSegmentAABB(lineStart, lineEnd, w.AABBmin, w.AABBmax)) {
+			// 衝突
+			// 位置を戻す
+			camera.pos = camera.prevPos;
+
+			// 視点を戻す
+			camera.yaw = camera.prevYaw;
+			camera.pitch = camera.prevPitch;
+			updateCameraFront();
+		}
+	}
+}
+
 
 float getFireInterval() {
 	return fireInterval;

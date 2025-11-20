@@ -345,32 +345,61 @@ void drawGunMuzzle(float radius) {
 	glPopMatrix();
 }
 
-bool intersectPlayerAABB(float _bottomY, float _topY, const glm::vec3& bmin, const glm::vec3& bmax) {
-	// --- 1) Y 高さ範囲が重なっていなければ衝突しない ---
-	bool overlapY = !(_topY < bmin.y || _bottomY > bmax.y);
-	if (!overlapY) return false;
+float closestPointOnSegment(float a, float b, float x)
+{
+	return std::max(a, std::min(x, b));
+}
 
-	// --- 2) XZ の円 vs AABB の最近点距離チェック ---
-	float closestX = std::max(bmin.x, std::min(camera.pos.x, bmax.x));
-	float closestZ = std::max(bmin.z, std::min(camera.pos.z, bmax.z));
+glm::vec3 closestPointOnSegment3(const glm::vec3& a, const glm::vec3& b, const glm::vec3& p)
+{
+	glm::vec3 ab = b - a;
+	float t = glm::dot(p - a, ab) / glm::dot(ab, ab);
+	t = std::max(0.0f, std::min(1.0f, t));
+	return a + t * ab;
+}
 
-	float dx = camera.pos.x - closestX;
-	float dz = camera.pos.z - closestZ;
+bool intersectCapsuleAABB(
+	const glm::vec3& capA,     // カプセル下球中心
+	const glm::vec3& capB,     // カプセル上球中心
+	float radius,
+	const glm::vec3& bmin,
+	const glm::vec3& bmax)
+{
+	// AABB 中の "capA・capB 線分に最も近い点" を求める
+	// → AABB の 8 面を使って AABB 内で Clamp する
+	float cx = std::max(bmin.x, std::min(capA.x, bmax.x));
+	float cy = std::max(bmin.y, std::min(capA.y, bmax.y));
+	float cz = std::max(bmin.z, std::min(capA.z, bmax.z));
 
-	float dist2 = dx * dx + dz * dz;
-	return dist2 <= P_RADIUS * P_RADIUS;
+	glm::vec3 closest = glm::vec3(cx, cy, cz);
+
+	// その点に最も近い、カプセル線分上の点
+	glm::vec3 segPoint =
+		closestPointOnSegment3(capA, capB, closest);
+
+	// 距離を計算
+	glm::vec3 d = closest - segPoint;
+	float dist2 = glm::dot(d, d);
+
+	return dist2 <= radius * radius;
 }
 
 void resolvePlayerCollision(const std::vector<Wall>& walls) {
-	float topY = camera.pos.y + 0.2f;		// 目線の高さ+20cm
-	float bottomY = camera.pos.y - STAND_HEIGHT;	// 要修正
-
+	// カプセル情報
+	glm::vec3 capBottom = player.footPos + glm::vec3(0, player.radius, 0);
+	glm::vec3 capTop = player.footPos + glm::vec3(0, player.eyeHeight + 0.2f - player.radius, 0);
+	
 	for (auto& w : walls) {
-		if (intersectPlayerAABB(bottomY, topY, w.AABBmin, w.AABBmax)) {
+		if (intersectCapsuleAABB(
+			capBottom,				// カプセル下球中心
+			capTop,					// カプセル上球中心
+			player.radius,
+			w.AABBmin,
+			w.AABBmax)) {
 			// 衝突
 			// 位置を戻す
 			camera.pos = camera.prevPos;
-			camera.pos -= camera.moveDir * 0.01f;
+			camera.pos -= camera.moveDir * 0.005f;
 
 			// 視点を戻す
 			camera.yaw = camera.prevYaw;
@@ -415,6 +444,31 @@ bool intersectSegmentAABB(
 	return true; // t ∈ [0,1] で交差する
 }
 
+
+void handleCrouchAndCeiling(const std::vector<Wall>& walls)
+{
+	// カプセル情報
+	glm::vec3 capBottom = player.footPos + glm::vec3(0, CROUCH_HEIGHT+0.2f, 0);
+	glm::vec3 capTop = player.footPos + glm::vec3(0, STAND_HEIGHT + 0.2f - player.radius, 0);
+	bool canStand = true;
+	
+	if (!player.isCrouching) {
+		for (auto& w : walls) {
+			if (intersectCapsuleAABB(capBottom, capTop, player.radius, w.AABBmin, w.AABBmax)) {
+				canStand = false;
+				break;
+			}
+		}
+		if (!canStand) {
+			// 天井があるのでしゃがみ状態を維持
+			player.eyeHeight = CROUCH_HEIGHT;
+			return;
+		}
+	}
+	// 目線の高さを更新
+	player.eyeHeight = player.isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT;
+}
+
 void resolveGunLineCollision(const std::vector<Wall>& walls) {
 	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
 	glm::vec3 camUp = camera.up;
@@ -435,7 +489,6 @@ void resolveGunLineCollision(const std::vector<Wall>& walls) {
 		}
 	}
 }
-
 
 float getFireInterval() {
 	return fireInterval;

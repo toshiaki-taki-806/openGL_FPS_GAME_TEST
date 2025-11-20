@@ -6,6 +6,8 @@
 #include "ground.h"
 #include "wall.h"
 #include "camera.h"
+#include "enemy.h"
+#include <vector>
 
 // ==== 個人設定関連 ====
 int crosshairSize = 5;             // クロスヘアのサイズ（画素単位、半分の長さ）
@@ -18,25 +20,24 @@ const float MOUSE_SENSITIVITY = 0.05f;	//　マウスの感度
 const float MOVE_SPEED = 4.0f;	// 通常の移動速度　m/s
 const float DASH_SPEED = 6.0f;	// ダッシュ時の速度 m/s
 float speed_mps;				// 速度をメートル　毎　秒とする計算用変数
-bool isDashing = false;			// ダッシュフラグ
-const float P_RADIUS = 0.5f;	// 身体の半径
+const float P_RADIUS = 0.4f;	// 身体の半径
 
 //　しゃがみ関連
-bool isCrouching = false;		//　しゃがみフラグ
 const float STAND_HEIGHT = 1.53f;	// 目線の高さ
-const float CROUCH_HEIGHT = 0.95f;	// しゃがみ時の目線の高さ
+const float PLYEAR_HEIGHT = STAND_HEIGHT + 0.2f; 
+const float CROUCH_HEIGHT = 0.75f;	// しゃがみ時の目線の高さ
 const float CROUCH_SPEED = 1.5f;	// しゃがみ時の速度　m/s
 
 // ==== 重力関連 ====
 float velocityY = 0.0f;				// 重力による速度計算用変数
-bool onGround = true;				// 地面への接地フラグ
 const float GRAVITY = 9.81f;		// 重力加速度
-const float JUMP_POWER = 3.1f;		// ジャンプの初速度　垂直飛び0.5m相当
+const float JUMP_POWER = 5.1f;		// ジャンプの初速度
 const float GROUND_Y = 0.0f;		// 地面の高さ	
+float nextY;						// 仮の地面の高さ
 
 // ==== ウィンドウ関連 ====
 int windowWidth = 1280;				// 画面の横幅
-int windowHeight = 720;				//画面高さ
+int windowHeight = 720;				// 画面高さ
 int windowCenterX, windowCenterY;	// 画面中央を示す変数
 bool ignoreNextWarp = false;		// マウス移動の更新無視フラグ
 
@@ -63,9 +64,6 @@ double getTimeSec() {
 
 // ラジアン変換 角度℃をラジアンへ変換　インライン関数にして処理を軽減
 inline float toRad(float deg) { return glm::radians(deg); }
-
-//　慣性関連
-glm::vec3 playerVelocity(0.0f);		// プレイヤーの速度。慣性の計算で利用
 
 // ==== クロスヘア ====
 // 画面中央に十字のマークを描画する関数
@@ -185,9 +183,21 @@ void setupScene()
 {
 	// 壁を追加（位置x,y,z 幅 高さ 奥行 色RGB）
 	addWall(glm::vec3(0.0f, 1.5f, 10.0f), 2.0f, 3.0f, 0.2f, glm::vec3(0.0f, 0.0f, 0.0f), MaterialType::Concrete);
-	addWall(glm::vec3(3.0f, 2.0f, 15.0f), 1.0f, 4.0f, 0.3f, glm::vec3(0.0f, 0.0f, 0.0f), MaterialType::RigidBody);
+	addWall(glm::vec3(3.0f, 2.2f, 15.0f), 1.0f, 2.0f, 0.3f, glm::vec3(0.0f, 0.0f, 0.0f), MaterialType::RigidBody);
+	addWall(
+		glm::vec3(-3.0f, 0.1f, 5.0f),	// 中心位置（Y=0.1）
+		2.0f,							// 幅
+		0.2f,							// 高さ（20cm）
+		2.0f,							// 奥行
+		glm::vec3(50, 50, 50),			// グレー
+		MaterialType::Concrete);		// 素材
 }
 
+// 敵を描写
+void setupEnemy()
+{
+	EnemyManager::addEnemy(glm::vec3(1, 1, 0), 0.5f, glm::vec3(1, 1, 1));
+}
 
 // ==== 描画関数 ====
 void display()
@@ -200,6 +210,7 @@ void display()
 
 	drawGround();					// 地面
 	drawWalls();					// 壁
+	EnemyManager::drawSphereEnemy();				// 敵
 	//drawCrosshair();				// クロスヘア
 	drawCameraInfo();				// デバッグ情報
 	drawGunMuzzle(GUN_RADIUS);		// 銃
@@ -248,7 +259,6 @@ void processMouseMotion(int x, int y)
 	// マウスを再びウィンドウ中央に戻す
 	glutWarpPointer(windowCenterX, windowCenterY);
 	ignoreNextWarp = true; // このWarpによるイベントを無視
-	//glutPostRedisplay();   // 描画更新要求
 }
 
 // マウスのクリック　左=0, 中=1, 右=2
@@ -275,17 +285,16 @@ void mouseClick(int button, int state, int x, int y) {
 void keyDown(unsigned char key, int, int) {
 	keyState[key] = true;
 
-	if (key == ';') isDashing = true;
-	if (key == ':') isCrouching = true;
+	if (key == ';') player.isDashing = true;
+	if (key == ':') player.isCrouching = true;
 	if (key == '@') laserPointer.active = !laserPointer.active; // 押すたび切替
 }
 
 // キー離した時
 void keyUp(unsigned char key, int, int) {
 	keyState[key] = false;
-
-	if (key == ';') isDashing = false;
-	if (key == ':') isCrouching = false;
+	if (key == ';') player.isDashing = false;
+	if (key == ':') player.isCrouching = false;
 }
 
 // update関数内で移動処理
@@ -308,14 +317,14 @@ void handleMovement() {
 	
 	// 斜め移動も自然になるよう正規化
 	if (glm::length(moveDir) > 0.0f) {
-		if (isCrouching)
+		if (player.isCrouching)
 			speed_mps = CROUCH_SPEED;
-		else if (isDashing)
+		else if (player.isDashing)
 			speed_mps = DASH_SPEED;
 		else
 			speed_mps = MOVE_SPEED;
 
-		// 毎フレームのプレイヤー速度を記録（地面にいるときのみ）
+		// 毎フレームの速度を記録
 		camera.moveDir = normalize(moveDir);
 
 		// normalize(moveDir)で方向のみで大きさ1へ変換。　m/sの速度を掛けて実際の速度を算出
@@ -326,12 +335,10 @@ void handleMovement() {
 	camera.pos += moveDir * static_cast<float>(PHYSICS_INTERVAL);
 
 	// ジャンプ
-	if (keyState[' '] && onGround && !isCrouching) {
+	if (keyState[' '] && player.onGround && !player.isCrouching) {
 		velocityY = JUMP_POWER;
-		onGround = false;
+		player.onGround = false;
 	}
-	// 最終的なYを調整
-	camera.pos.y = (onGround) ? GROUND_Y + (isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT) : camera.pos.y;
 }
 
 
@@ -344,8 +351,6 @@ void update()
 	// --- 物理演算（一定間隔で複数回実行） ---
 	while (current - lastPhysicsTime >= PHYSICS_INTERVAL)
 	{	
-		camera.prevPos = camera.pos;
-
 		// カメラの角度を更新
 		float dx = mouseDx;
 		float dy = mouseDy;
@@ -361,27 +366,49 @@ void update()
 		// GLMの前方向ベクトルを更新
 		updateCameraFront();
 
+		// 移動前の位置を記録
+		camera.prevPos = camera.pos;
+
 		// --- キーによる移動（水平移動） ---
 		handleMovement();
 
-		// 壁との衝突判定
+		// 壁と銃の衝突判定
 		resolveGunLineCollision(g_walls);
+
+		// 壁との衝突判定
+		player.footPos = camera.pos - glm::vec3(0, player.eyeHeight, 0);
 		resolvePlayerCollision(g_walls);
 
-		// 空中にいる場合の重力処理
-		if (!onGround)
+		// 重力処理
+		// プレイヤの真下の床を取得
+		float floor = getFloor(g_walls);
+		// 接地していない　or 足元が床より上なら重力を適用
+		if (player.footPos.y > floor) {
+			player.onGround = false;
+		}
+		if (!player.onGround)
 		{
 			velocityY -= GRAVITY * PHYSICS_INTERVAL;		// 重力加速度を垂直速度に加算
-			camera.pos.y += velocityY * PHYSICS_INTERVAL;	// カメラのY座標を更新
 
-			// 地面に接地した場合のリセット
-			if (camera.pos.y <= GROUND_Y + STAND_HEIGHT)
-			{
-				camera.pos.y = GROUND_Y + STAND_HEIGHT;		// 地面+目線高さで止める
-				velocityY = 0.0f;							// 垂直速度をリセット
-				onGround = true;							// 接地フラグを立てる
+			// 仮のY座標
+			nextY = player.footPos.y + velocityY * PHYSICS_INTERVAL;
+
+			// 接地判定
+			if (nextY <= floor) {
+				player.footPos.y = floor;
+				velocityY = 0.0f;
+				player.onGround = true;
+			}
+			else {
+				player.footPos.y = nextY;
 			}
 		}
+
+		// 起き上がれるかの判定処理 自動で起き上がれない
+		handleCrouchAndCeiling(g_walls);
+
+		// プレイヤー衝突判定後のカメラ位置を調整
+		camera.pos.y = player.footPos.y + player.eyeHeight;
 
 		// 弾の演算
 		updateSpheres();
@@ -455,8 +482,16 @@ int main(int argc, char** argv)
 	// カメラの初期化関数呼び出し
 	initCamera();
 
+	// プレイヤの初期化
+	player.footPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	player.eyeHeight = STAND_HEIGHT;
+	player.radius = P_RADIUS;
+
 	// --- シーン初期化 ---
 	setupScene();
+	
+	// 敵を初期化
+	setupEnemy();
 
 	// 時間管理変数を初期化
 	// 描画と物理更新の基準時刻として使用

@@ -17,6 +17,16 @@ struct Camera {
 // ==== 外部変数 ====
 extern Camera camera;
 
+struct Player {
+	glm::vec3 footPos;		// 足元の位置（物理・衝突判定用）
+	bool onGround;			// 接地フラグ
+	bool isCrouching;		// しゃがみ状態
+	bool isDashing;			// ダッシュ状態
+	float eyeHeight;		// 目線高さ（立ち/しゃがみで変化）
+	float radius;			// カプセル半径
+};
+extern Player player;
+
 // ==== プロトタイプ関数 ====
 void initCamera();
 void updateCameraFront();

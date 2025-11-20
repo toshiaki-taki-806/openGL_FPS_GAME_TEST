@@ -1,20 +1,21 @@
-#include "glut.h"
+ï»¿#include "glut.h"
+#include "camera.h"
 #include "ground.h"
 
 void drawGround()
 {
-	const int viewRange = 20;     // ƒJƒƒ‰‚©‚ç•`‰æ‚·‚é”ÍˆÍi”¼Œa20mj
-	const float tileSize = 1.0f;  // 1ƒ^ƒCƒ‹‚Ì•E‰œs‚«i1ml•ûj
+	const int viewRange = 20;     // ã‚«ãƒ¡ãƒ©ã‹ã‚‰æç”»ã™ã‚‹ç¯„å›²ï¼ˆåŠå¾„20mï¼‰
+	const float tileSize = 1.0f;  // 1ã‚¿ã‚¤ãƒ«ã®å¹…ãƒ»å¥¥è¡Œãï¼ˆ1må››æ–¹ï¼‰
 
-	// ƒJƒƒ‰‚ÌŒ»İÀ•W‚ğ®”‚ÉŠÛ‚ß‚éiƒ^ƒCƒ‹’PˆÊ‚Åˆµ‚¤‚½‚ßj
+	// ã‚«ãƒ¡ãƒ©ã®ç¾åœ¨åº§æ¨™ã‚’æ•´æ•°ã«ä¸¸ã‚ã‚‹ï¼ˆã‚¿ã‚¤ãƒ«å˜ä½ã§æ‰±ã†ãŸã‚ï¼‰
 	int camX = static_cast<int>(camera.pos.x);
 	int camZ = static_cast<int>(camera.pos.z);
 
-	glColor3f(1.0f, 1.0f, 1.0f);  // ü‚ÌF‚Í”’
-	glLineWidth(1.0f);            // ü•
+	glColor3f(1.0f, 1.0f, 1.0f);  // ç·šã®è‰²ã¯ç™½
+	glLineWidth(1.0f);            // ç·šå¹…
 
 	glBegin(GL_LINES);
-	// X•ûŒü‚Ìü
+	// Xæ–¹å‘ã®ç·š
 	for (int x = camX - viewRange; x <= camX + viewRange; ++x)
 	{
 		float xf = x * tileSize;
@@ -24,7 +25,7 @@ void drawGround()
 		glVertex3f(xf, 0.0f, zEnd);
 	}
 
-	// Z•ûŒü‚Ìü
+	// Zæ–¹å‘ã®ç·š
 	for (int z = camZ - viewRange; z <= camZ + viewRange; ++z)
 	{
 		float zf = z * tileSize;
@@ -34,4 +35,29 @@ void drawGround()
 		glVertex3f(xEnd, 0.0f, zf);
 	}
 	glEnd();
+}
+
+float getFloor(const std::vector<Wall>& walls) {
+	float maxFloorY = GROUND_Y;
+	//const float STEP_HEIGHT = 0.2f;		// æ®µå·®ã‚’ä¹—ã‚Šè¶Šãˆã‚‹å‡¦ç†
+
+	float footY = player.footPos.y; // è¶³å…ƒã®Yï¼ˆãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®åº•ï¼‰
+	//float maxCandidateY = footY + STEP_HEIGHT; // è¶³å…ƒã‹ã‚‰ã‚¹ãƒ†ãƒƒãƒ—ã¾ã§
+
+	for (const auto& w : g_walls) {
+		// ã‚­ãƒ£ãƒ©ã‚¯ã‚¿ãƒ¼ã®XZãŒå£ã®ç¯„å›²å†…ãªã‚‰å€™è£œ
+		if (camera.pos.x + player.radius >= w.AABBmin.x && camera.pos.x - player.radius <= w.AABBmax.x &&
+			camera.pos.z + player.radius >= w.AABBmin.z && camera.pos.z - player.radius <= w.AABBmax.z)
+		{
+			// ä¸Šé¢ã‚’å–å¾—
+			float topY = w.AABBmax.y;
+			// è¶³å…ƒã€œã‚¹ãƒ†ãƒƒãƒ—é«˜ã•å†…ãªã‚‰ floorY å€™è£œ
+			//if (topY >= footY && topY <= maxCandidateY) {
+			if (topY <= footY) {
+				if (topY > maxFloorY)
+					maxFloorY = topY;
+			}
+		}	
+	}
+	return maxFloorY;
 }

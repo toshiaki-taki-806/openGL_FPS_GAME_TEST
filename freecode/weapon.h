@@ -9,7 +9,7 @@
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
 const float airDensity = 1.225f;		// 空気:1.225f kg/m³,水:1000.0f kg/m³
 const float dragCoefficient = 0.295f;	// 球体の形状
-const glm::vec3 GUN_MUZZLE_OFFSET(-0.2f, -0.3f, 2.4f);
+const glm::vec3 GUN_MUZZLE_OFFSET(-0.2f, -0.3f, 1.2f);
 const float GUN_RADIUS = 0.02f;
 
 // ---- 他ファイルから参照する外部変数・関数 ----
@@ -17,8 +17,8 @@ double getTimeSec();					// main.cppで定義された時間取得関数
 extern const double PHYSICS_INTERVAL;	// main.cppで定義された物理演算の時間間隔
 extern const float GROUND_Y;			// main.cppで定義された地面の座標
 extern const float GRAVITY;				// main.cppで定義された重力加速度
-extern const float STAND_HEIGHT;		// 目線の高さ
-extern const float P_RADIUS;			// 身体の半径
+extern const float STAND_HEIGHT;
+extern const float CROUCH_HEIGHT;
 
 // 弾の定義
 struct Sphere {
@@ -70,3 +70,4 @@ void resolveGunLineCollision(const std::vector<Wall>& walls);
 void resolvePlayerCollision(const std::vector<Wall>& walls);
 float getFireInterval();		// 連射間隔を取得
 void setFireInterval(float f);	// 設定も可能
+void handleCrouchAndCeiling(const std::vector<Wall>& walls);

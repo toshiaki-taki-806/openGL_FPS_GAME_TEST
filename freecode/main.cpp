@@ -8,6 +8,8 @@
 #include "camera.h"
 #include "enemy.h"
 #include <vector>
+#include <chrono>
+#include <random>
 
 // ==== 個人設定関連 ====
 int crosshairSize = 5;             // クロスヘアのサイズ（画素単位、半分の長さ）
@@ -21,6 +23,11 @@ const float MOVE_SPEED = 4.0f;	// 通常の移動速度　m/s
 const float DASH_SPEED = 6.0f;	// ダッシュ時の速度 m/s
 float speed_mps;				// 速度をメートル　毎　秒とする計算用変数
 const float P_RADIUS = 0.4f;	// 身体の半径
+
+// 衝突・余白判定用の定数
+const float FLOOR_EPSILON = 0.02f;		// 床接地判定の余裕
+const float WALL_EPSILON = 0.02f;		// 壁衝突判定の余裕
+const float CEILING_EPSILON = 0.15f;	// 天井チェック（立ち上がり可能か）の余裕
 
 //　しゃがみ関連
 const float STAND_HEIGHT = 1.53f;	// 目線の高さ
@@ -61,6 +68,9 @@ static int mouseDy;
 double getTimeSec() {
 	return glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 }
+
+// 前回生成時間
+std::chrono::steady_clock::time_point lastSpawnTime = std::chrono::steady_clock::now();
 
 // ラジアン変換 角度℃をラジアンへ変換　インライン関数にして処理を軽減
 inline float toRad(float deg) { return glm::radians(deg); }
@@ -178,6 +188,19 @@ void drawDebugSpheres()
 	}
 }
 
+void drawEnemyCount()
+{
+	char buffer[64];
+
+	// 現在の敵の数を文字列に変換
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "Enemies: %zu", g_enemies.size());
+
+	// 画面上部中央に描画
+	int textX = windowWidth / 2 - 50; // おおよその中央調整
+	int textY = windowHeight - 20;    // 上から20px下
+	drawText2D(buffer, textX, textY);
+}
+
 // 地形の設定
 void setupScene()
 {
@@ -185,9 +208,9 @@ void setupScene()
 	addWall(glm::vec3(0.0f, 1.5f, 10.0f), 2.0f, 3.0f, 0.2f, glm::vec3(0.0f, 0.0f, 0.0f), MaterialType::Concrete);
 	addWall(glm::vec3(3.0f, 2.2f, 15.0f), 1.0f, 2.0f, 0.3f, glm::vec3(0.0f, 0.0f, 0.0f), MaterialType::RigidBody);
 	addWall(
-		glm::vec3(-3.0f, 0.1f, 5.0f),	// 中心位置（Y=0.1）
+		glm::vec3(-3.0f, 0.2f, 5.0f),	// 中心位置（Y=0.1）
 		2.0f,							// 幅
-		0.2f,							// 高さ（20cm）
+		0.4f,							// 高さ（20cm）
 		2.0f,							// 奥行
 		glm::vec3(50, 50, 50),			// グレー
 		MaterialType::Concrete);		// 素材
@@ -196,7 +219,31 @@ void setupScene()
 // 敵を描写
 void setupEnemy()
 {
-	EnemyManager::addEnemy(glm::vec3(1, 1, 0), 0.5f, glm::vec3(1, 1, 1));
+	addEnemy(glm::vec3(1, 1, 0), 0.5f, glm::vec3(1, 1, 1));
+}
+// ランダム生成関数
+void spawnRandomEnemy()
+{
+	static std::mt19937 rng(std::random_device{}());
+	static std::uniform_real_distribution<float> distXZ(-10.0f, 10.0f); // X, Z
+	static std::uniform_real_distribution<float> distY(1.0f, 5.0f);      // Y
+
+	glm::vec3 pos(distXZ(rng), distY(rng), distXZ(rng));
+	float radius = 0.5f;
+	glm::vec3 color(1.0f, 1.0f, 1.0f);
+
+	addEnemy(pos, radius, color);
+}
+// display関数内か、毎フレーム呼ばれる更新関数内
+void updateEnemySpawn()
+{
+	auto now = std::chrono::steady_clock::now();
+	std::chrono::duration<float> elapsed = now - lastSpawnTime;
+
+	if (elapsed.count() >= 2.0f) { // 2秒ごと
+		spawnRandomEnemy();
+		lastSpawnTime = now;
+	}
 }
 
 // ==== 描画関数 ====
@@ -210,7 +257,9 @@ void display()
 
 	drawGround();					// 地面
 	drawWalls();					// 壁
-	EnemyManager::drawSphereEnemy();				// 敵
+	updateEnemySpawn();				// 敵生成チェック
+	drawSphereEnemy();				// 敵
+	drawEnemyCount();
 	//drawCrosshair();				// クロスヘア
 	drawCameraInfo();				// デバッグ情報
 	drawGunMuzzle(GUN_RADIUS);		// 銃
@@ -379,31 +428,24 @@ void update()
 		player.footPos = camera.pos - glm::vec3(0, player.eyeHeight, 0);
 		resolvePlayerCollision(g_walls);
 
-		// 重力処理
-		// プレイヤの真下の床を取得
 		float floor = getFloor(g_walls);
-		// 接地していない　or 足元が床より上なら重力を適用
 		if (player.footPos.y > floor) {
 			player.onGround = false;
 		}
-		if (!player.onGround)
-		{
-			velocityY -= GRAVITY * PHYSICS_INTERVAL;		// 重力加速度を垂直速度に加算
-
-			// 仮のY座標
+		if (!player.onGround) {
+			velocityY -= GRAVITY * PHYSICS_INTERVAL;
 			nextY = player.footPos.y + velocityY * PHYSICS_INTERVAL;
-
-			// 接地判定
-			if (nextY <= floor) {
-				player.footPos.y = floor;
-				velocityY = 0.0f;
-				player.onGround = true;
-			}
-			else {
-				player.footPos.y = nextY;
-			}
 		}
-
+		if (nextY <= floor + FLOOR_EPSILON) {
+			// 接地
+			player.footPos.y = floor;
+			velocityY = 0;
+			player.onGround = true;
+		}
+		else {
+			player.footPos.y = nextY;
+		}
+		
 		// 起き上がれるかの判定処理 自動で起き上がれない
 		handleCrouchAndCeiling(g_walls);
 
@@ -412,6 +454,9 @@ void update()
 
 		// 弾の演算
 		updateSpheres();
+
+		// 弾と敵の衝突判定
+		checkBulletEnemyCollision(g_enemies);
 
 		// --- 右クリック連射処理 ---
 		static double lastShotTime = 0.0;
@@ -486,6 +531,7 @@ int main(int argc, char** argv)
 	player.footPos = glm::vec3(0.0f, 0.0f, 0.0f);
 	player.eyeHeight = STAND_HEIGHT;
 	player.radius = P_RADIUS;
+	player.onGround = true;
 
 	// --- シーン初期化 ---
 	setupScene();

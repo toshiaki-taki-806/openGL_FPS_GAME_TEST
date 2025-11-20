@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "Material.h"
 #include "wall.h"
+#include "enemy.h"
 
 // 武器デフォルト値
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
@@ -19,6 +20,8 @@ extern const float GROUND_Y;			// main.cppで定義された地面の座標
 extern const float GRAVITY;				// main.cppで定義された重力加速度
 extern const float STAND_HEIGHT;
 extern const float CROUCH_HEIGHT;
+extern const float WALL_EPSILON;
+extern const float CEILING_EPSILON;
 
 // 弾の定義
 struct Sphere {
@@ -71,3 +74,4 @@ void resolvePlayerCollision(const std::vector<Wall>& walls);
 float getFireInterval();		// 連射間隔を取得
 void setFireInterval(float f);	// 設定も可能
 void handleCrouchAndCeiling(const std::vector<Wall>& walls);
+void checkBulletEnemyCollision(std::vector<SphereEnemy>& enemies);

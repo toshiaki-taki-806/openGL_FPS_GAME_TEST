@@ -39,10 +39,6 @@ void drawGround()
 
 float getFloor(const std::vector<Wall>& walls) {
 	float maxFloorY = GROUND_Y;
-	//const float STEP_HEIGHT = 0.2f;		// 段差を乗り越える処理
-
-	float footY = player.footPos.y; // 足元のY（プレイヤーの底）
-	//float maxCandidateY = footY + STEP_HEIGHT; // 足元からステップまで
 
 	for (const auto& w : g_walls) {
 		// キャラクターのXZが壁の範囲内なら候補
@@ -53,11 +49,12 @@ float getFloor(const std::vector<Wall>& walls) {
 			float topY = w.AABBmax.y;
 			// 足元〜ステップ高さ内なら floorY 候補
 			//if (topY >= footY && topY <= maxCandidateY) {
-			if (topY <= footY) {
+			if (topY <= player.footPos.y + FLOOR_EPSILON) {
 				if (topY > maxFloorY)
 					maxFloorY = topY;
 			}
 		}	
 	}
+	
 	return maxFloorY;
 }

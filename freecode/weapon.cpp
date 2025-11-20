@@ -386,8 +386,8 @@ bool intersectCapsuleAABB(
 
 void resolvePlayerCollision(const std::vector<Wall>& walls) {
 	// カプセル情報
-	glm::vec3 capBottom = player.footPos + glm::vec3(0, player.radius, 0);
-	glm::vec3 capTop = player.footPos + glm::vec3(0, player.eyeHeight + 0.2f - player.radius, 0);
+	glm::vec3 capBottom = player.footPos + glm::vec3(0, player.radius, 0) + WALL_EPSILON;
+	glm::vec3 capTop = player.footPos + glm::vec3(0, player.eyeHeight + 0.2f - player.radius, 0) - WALL_EPSILON;
 	
 	for (auto& w : walls) {
 		if (intersectCapsuleAABB(
@@ -444,28 +444,43 @@ bool intersectSegmentAABB(
 	return true; // t ∈ [0,1] で交差する
 }
 
-
 void handleCrouchAndCeiling(const std::vector<Wall>& walls)
 {
-	// カプセル情報
-	glm::vec3 capBottom = player.footPos + glm::vec3(0, CROUCH_HEIGHT+0.2f, 0);
-	glm::vec3 capTop = player.footPos + glm::vec3(0, STAND_HEIGHT + 0.2f - player.radius, 0);
-	bool canStand = true;
-	
-	if (!player.isCrouching) {
-		for (auto& w : walls) {
-			if (intersectCapsuleAABB(capBottom, capTop, player.radius, w.AABBmin, w.AABBmax)) {
-				canStand = false;
-				break;
+	// ---- 天井チェック ----
+	auto checkCeiling = [&](float radius)
+		{
+			float y0 = player.footPos.y + CROUCH_HEIGHT;  // しゃがみ頭
+			float y1 = player.footPos.y + STAND_HEIGHT + CEILING_EPSILON;   // 立ち頭
+
+			glm::vec3 from(player.footPos.x, y0, player.footPos.z);
+			glm::vec3 to(player.footPos.x, y1, player.footPos.z);
+
+			for (const auto& w : walls)
+			{
+				// XZ が壁の範囲に入っているか？
+				if (from.x >= w.AABBmin.x - radius && from.x <= w.AABBmax.x + radius &&
+					from.z >= w.AABBmin.z - radius && from.z <= w.AABBmax.z + radius)
+				{
+					// 天井の高さが y0〜y1 の間にある？
+					if (w.AABBmin.y <= y1 && w.AABBmax.y >= y0)
+						return true;  // 天井あり
+				}
 			}
-		}
-		if (!canStand) {
-			// 天井があるのでしゃがみ状態を維持
+			return false; // 天井なし
+		};
+
+	// ---- 立ち上がれるか？ ----
+	if (!player.isCrouching)
+	{
+		if (checkCeiling(player.radius*0.8))
+		{
+			// 天井があって立てない
 			player.eyeHeight = CROUCH_HEIGHT;
 			return;
 		}
 	}
-	// 目線の高さを更新
+
+	// ---- 最終的な高さ決定 ----
 	player.eyeHeight = player.isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT;
 }
 
@@ -486,6 +501,45 @@ void resolveGunLineCollision(const std::vector<Wall>& walls) {
 			camera.yaw = camera.prevYaw;
 			camera.pitch = camera.prevPitch;
 			updateCameraFront();
+		}
+	}
+}
+
+bool intersectSegmentSphere(const glm::vec3& p1, const glm::vec3& p2,
+	const SphereEnemy& enemy)
+{
+	glm::vec3 d = p2 - p1;
+	glm::vec3 f = p1 - enemy.position;
+
+	float a = glm::dot(d, d);
+	float b = 2.0f * glm::dot(f, d);
+	float c = glm::dot(f, f) - enemy.radius * enemy.radius;
+
+	float discriminant = b * b - 4 * a * c;
+	if (discriminant < 0) return false;
+
+	discriminant = sqrtf(discriminant);
+	float t1 = (-b - discriminant) / (2 * a);
+	float t2 = (-b + discriminant) / (2 * a);
+
+	return (t1 >= 0.0f && t1 <= 1.0f) || (t2 >= 0.0f && t2 <= 1.0f);
+}
+
+void checkBulletEnemyCollision(std::vector<SphereEnemy>& enemies)
+{
+	for (int i = static_cast<int>(spheres.size()) - 1; i >= 0; --i) {
+		Sphere& bullet = spheres[i];
+		glm::vec3 p1 = bullet.prevPos;
+		glm::vec3 p2 = bullet.position;
+
+		for (int j = static_cast<int>(enemies.size()) - 1; j >= 0; --j) {
+			SphereEnemy& enemy = enemies[j];
+
+			if (intersectSegmentSphere(p1, p2, enemy)) {
+				spheres.erase(spheres.begin() + i);
+				enemies.erase(enemies.begin() + j);
+				break;
+			}
 		}
 	}
 }

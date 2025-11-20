@@ -4,6 +4,7 @@
 #include "wall.h"
 
 extern const float GROUND_Y;
+extern const float FLOOR_EPSILON;
 
 // ---- 関数プロトタイプ ----
 void drawGround();

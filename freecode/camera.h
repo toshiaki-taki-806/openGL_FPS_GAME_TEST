@@ -24,6 +24,7 @@ struct Player {
 	bool isDashing;			// ダッシュ状態
 	float eyeHeight;		// 目線高さ（立ち/しゃがみで変化）
 	float radius;			// カプセル半径
+	bool isAiming;			// ADSフラグ
 };
 extern Player player;
 
@@ -31,3 +32,4 @@ extern Player player;
 void initCamera();
 void updateCameraFront();
 void applyCameraView();
+

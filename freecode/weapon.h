@@ -10,7 +10,8 @@
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
 const float airDensity = 1.225f;		// 空気:1.225f kg/m³,水:1000.0f kg/m³
 const float dragCoefficient = 0.295f;	// 球体の形状
-const glm::vec3 GUN_MUZZLE_OFFSET(-0.2f, -0.3f, 1.2f);
+const glm::vec3 gunMuzzleOffset(-0.2f, -0.3f, 1.2f);
+glm::vec3 gunMuzzleOffset(-0.2f, -0.3f, 1.2f);
 const float GUN_RADIUS = 0.02f;
 
 // ---- 他ファイルから参照する外部変数・関数 ----
@@ -22,6 +23,7 @@ extern const float STAND_HEIGHT;
 extern const float CROUCH_HEIGHT;
 extern const float WALL_EPSILON;
 extern const float CEILING_EPSILON;
+extern int score;
 
 // 弾の定義
 struct Sphere {

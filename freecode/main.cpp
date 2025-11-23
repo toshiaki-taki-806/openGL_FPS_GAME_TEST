@@ -12,11 +12,12 @@
 #include <random>
 
 // ==== 個人設定関連 ====
-int crosshairSize = 5;             // クロスヘアのサイズ（画素単位、半分の長さ）
+int crosshairSize = 5;				// クロスヘアのサイズ（画素単位、半分の長さ）
 unsigned char crosshairColor[3] = { 0x00, 0xff, 0x00 }; // クロスヘアの色（RGB）
-float crosshairThickness = 1.5f;   // クロスヘアの線の太さ
-float CAMERA_FOVY = 60.0f;         // 垂直方向の視野角（度）
-float CAMERA_ZFAR = 500.0f;        // カメラの描画可能な最遠距離
+float crosshairThickness = 1.5f;	// クロスヘアの線の太さ
+float CAMERA_FOVY = 60.0f;			// 垂直方向の視野角（度）
+float CAMERA_ZFAR = 500.0f;			// カメラの描画可能な最遠距離
+int score = 0;						// 得点
 
 const float MOUSE_SENSITIVITY = 0.05f;	//　マウスの感度
 const float MOVE_SPEED = 4.0f;	// 通常の移動速度　m/s
@@ -25,7 +26,7 @@ float speed_mps;				// 速度をメートル　毎　秒とする計算用変数
 const float P_RADIUS = 0.4f;	// 身体の半径
 
 // 衝突・余白判定用の定数
-const float FLOOR_EPSILON = 0.02f;		// 床接地判定の余裕
+const float FLOOR_EPSILON = 0.01f;		// 床接地判定の余裕 // 低いとジャンプ時に吸いつくので注意
 const float WALL_EPSILON = 0.02f;		// 壁衝突判定の余裕
 const float CEILING_EPSILON = 0.15f;	// 天井チェック（立ち上がり可能か）の余裕
 
@@ -38,7 +39,7 @@ const float CROUCH_SPEED = 1.5f;	// しゃがみ時の速度　m/s
 // ==== 重力関連 ====
 float velocityY = 0.0f;				// 重力による速度計算用変数
 const float GRAVITY = 9.81f;		// 重力加速度
-const float JUMP_POWER = 5.1f;		// ジャンプの初速度
+const float JUMP_POWER = 4.1f;		// ジャンプの初速度
 const float GROUND_Y = 0.0f;		// 地面の高さ	
 float nextY;						// 仮の地面の高さ
 
@@ -69,7 +70,7 @@ double getTimeSec() {
 	return glutGet(GLUT_ELAPSED_TIME) / 1000.0;
 }
 
-// 前回生成時間
+// 前回Enemyの生成時間　std::chrono::steady_clock::now():初期値として現在の時間
 std::chrono::steady_clock::time_point lastSpawnTime = std::chrono::steady_clock::now();
 
 // ラジアン変換 角度℃をラジアンへ変換　インライン関数にして処理を軽減
@@ -79,38 +80,73 @@ inline float toRad(float deg) { return glm::radians(deg); }
 // 画面中央に十字のマークを描画する関数
 void drawCrosshair()
 {
-	glMatrixMode(GL_PROJECTION);        // 射影行列モードに切り替え
-	glPushMatrix();                      // 現在の射影行列を退避
-	glLoadIdentity();                    // 射影行列を初期化
+	glMatrixMode(GL_PROJECTION);			// 射影行列モードに切り替え
+	glPushMatrix();							// 現在の射影行列を退避
+	glLoadIdentity();					    // 射影行列を初期化
 	gluOrtho2D(0, windowWidth, 0, windowHeight); // 2Dスクリーン座標系に設定
 
-	glMatrixMode(GL_MODELVIEW);          // モデルビュー行列モードに切り替え
-	glPushMatrix();                      // 現在のモデルビュー行列を退避
-	glLoadIdentity();                    // モデルビュー行列を初期化
+	glMatrixMode(GL_MODELVIEW);				// モデルビュー行列モードに切り替え
+	glPushMatrix();							// 現在のモデルビュー行列を退避
+	glLoadIdentity();						// モデルビュー行列を初期化
 
-	glDisable(GL_DEPTH_TEST);            // 深度テストを無効化（必ず手前に描画）
+	glDisable(GL_DEPTH_TEST);				// 深度テストを無効化（必ず手前に描画）
 
 	glColor3ub(crosshairColor[0], crosshairColor[1], crosshairColor[2]);		// 個人設定の色
-	glLineWidth(crosshairThickness); // 個人設定の太さ
+	glLineWidth(crosshairThickness);		// 個人設定の太さ
 
-	int cx = windowWidth / 2;            // 画面中央のX座標
-	int cy = windowHeight / 2;           // 画面中央のY座標
+	int cx = windowWidth / 2;				// 画面中央のX座標
+	int cy = windowHeight / 2;				// 画面中央のY座標
 
-	glBegin(GL_LINES);                    // 線を描画開始
-	glVertex2i(cx - crosshairSize, cy);       // 左方向の端
-	glVertex2i(cx + crosshairSize, cy);       // 右方向の端
-	glVertex2i(cx, cy - crosshairSize);       // 下方向の端
-	glVertex2i(cx, cy + crosshairSize);       // 上方向の端
-	glEnd();                              // 線の描画終了
+	glBegin(GL_LINES);						// 線を描画開始
+	glVertex2i(cx - crosshairSize, cy);		// 左方向の端
+	glVertex2i(cx + crosshairSize, cy);		// 右方向の端
+	glVertex2i(cx, cy - crosshairSize);		// 下方向の端
+	glVertex2i(cx, cy + crosshairSize);		// 上方向の端
+	glEnd();								// 線の描画終了
 
-	glEnable(GL_DEPTH_TEST);             // 深度テストを再有効化
+	glEnable(GL_DEPTH_TEST);				// 深度テストを再有効化
 
-	glPopMatrix();                       // モデルビュー行列を復元
-	glMatrixMode(GL_PROJECTION);         // 射影行列モードに切り替え
-	glPopMatrix();                       // 射影行列を復元
-	glMatrixMode(GL_MODELVIEW);          // 元のモデルビュー行列モードに戻す
+	glPopMatrix();							 // モデルビュー行列を復元
+	glMatrixMode(GL_PROJECTION);			// 射影行列モードに切り替え
+	glPopMatrix();							// 射影行列を復元
+	glMatrixMode(GL_MODELVIEW);				// 元のモデルビュー行列モードに戻す
 
 }
+
+void drawADS()
+{
+	glMatrixMode(GL_PROJECTION);			// 射影行列モードに切り替え
+	glPushMatrix();							// 現在の射影行列を退避
+	glLoadIdentity();					    // 射影行列を初期化
+	gluOrtho2D(0, windowWidth, 0, windowHeight); // 2Dスクリーン座標系に設定
+
+	glMatrixMode(GL_MODELVIEW);				// モデルビュー行列モードに切り替え
+	glPushMatrix();							// 現在のモデルビュー行列を退避
+	glLoadIdentity();						// モデルビュー行列を初期化
+
+	glDisable(GL_DEPTH_TEST);				// 深度テストを無効化（必ず手前に描画）
+
+	glLineWidth(2.0f);						// ラインの太さ
+	glColor3f(1.0f, 1.0f, 1.0f);			// 白
+
+	int cx = windowWidth / 2;				// 画面中央のX座標
+	int cy = windowHeight / 2;				// 画面中央のY座標
+
+	glBegin(GL_LINES);						// 線を描画開始
+	glVertex2f(cx - 10, cy);
+	glVertex2f(cx + 10, cy);
+	glVertex2f(cx, cy - 10);
+	glVertex2f(cx, cy + 10);
+	glEnd();								// 線の描画終了
+
+	glEnable(GL_DEPTH_TEST);				// 深度テストを再有効化
+
+	glPopMatrix();							 // モデルビュー行列を復元
+	glMatrixMode(GL_PROJECTION);			// 射影行列モードに切り替え
+	glPopMatrix();							// 射影行列を復元
+	glMatrixMode(GL_MODELVIEW);				// 元のモデルビュー行列モードに戻す
+}
+
 
 // 画面右上に任意の文字列を描画する関数
 void drawText2D(const char* text, int x, int y, void* font = GLUT_BITMAP_HELVETICA_18, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255)
@@ -168,7 +204,7 @@ void drawDebugSpheres()
 
 	// 右上に縦に表示
 	int lineHeight = 20;
-	int startY = windowHeight - 20;
+	int startY = 20;
 
 	for (auto it = debugSpheres.begin(); it != debugSpheres.end(); ) {
 		// 表示期限が過ぎたら消す
@@ -182,7 +218,7 @@ void drawDebugSpheres()
 			it->position.x, it->position.y, it->position.z, it->lifeTime, it->speed);
 
 		drawText2D(buffer, windowWidth - 600, startY); // 右上表示
-		startY -= lineHeight;
+		startY += lineHeight;
 
 		++it;
 	}
@@ -196,9 +232,17 @@ void drawEnemyCount()
 	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "Enemies: %zu", g_enemies.size());
 
 	// 画面上部中央に描画
-	int textX = windowWidth / 2 - 50; // おおよその中央調整
+	int textX = windowWidth / 2 - 100; // おおよそ中央調整
 	int textY = windowHeight - 20;    // 上から20px下
 	drawText2D(buffer, textX, textY);
+}
+
+void drawScore() {
+	char buffer[64];
+
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "SCORE:%d", score);
+	drawText2D(buffer, windowWidth - 200, windowHeight - 20);
+
 }
 
 // 地形の設定
@@ -221,26 +265,28 @@ void setupEnemy()
 {
 	addEnemy(glm::vec3(1, 1, 0), 0.5f, glm::vec3(1, 1, 1));
 }
+
 // ランダム生成関数
 void spawnRandomEnemy()
 {
-	static std::mt19937 rng(std::random_device{}());
-	static std::uniform_real_distribution<float> distXZ(-10.0f, 10.0f); // X, Z
-	static std::uniform_real_distribution<float> distY(1.0f, 5.0f);      // Y
+	static std::mt19937 rng(std::random_device{}());					// mt19937 C++標準乱数発生器による初期化
+	static std::uniform_real_distribution<float> distXZ(-10.0f, 10.0f);	// X, Z座標の一様乱数分布
+	static std::uniform_real_distribution<float> distY(1.0f, 5.0f);		// Y
 
-	glm::vec3 pos(distXZ(rng), distY(rng), distXZ(rng));
-	float radius = 0.5f;
-	glm::vec3 color(1.0f, 1.0f, 1.0f);
+	glm::vec3 pos(distXZ(rng), distY(rng), distXZ(rng));				// 乱数の座標を生成
+	float radius = 0.5f;												// Enemyの半径
+	glm::vec3 color(1.0f, 1.0f, 1.0f);									// 色(0-1 float)
 
 	addEnemy(pos, radius, color);
 }
-// display関数内か、毎フレーム呼ばれる更新関数内
+
+// Enemyの更新
 void updateEnemySpawn()
 {
 	auto now = std::chrono::steady_clock::now();
 	std::chrono::duration<float> elapsed = now - lastSpawnTime;
 
-	if (elapsed.count() >= 2.0f) { // 2秒ごと
+	if (elapsed.count() >= 2.0f) { // 2秒毎に生成
 		spawnRandomEnemy();
 		lastSpawnTime = now;
 	}
@@ -261,10 +307,15 @@ void display()
 	drawSphereEnemy();				// 敵
 	drawEnemyCount();
 	//drawCrosshair();				// クロスヘア
+	// ADSを描写
+	if (player.isAiming) {
+		drawADS();
+	}
 	drawCameraInfo();				// デバッグ情報
 	drawGunMuzzle(GUN_RADIUS);		// 銃
 	drawSpheres();					// 弾丸
 	drawDebugSpheres();				// 弾のデバッグ情報
+	drawScore();					// 得点を表示
 	drawLaserPointer();				// 常時照射レーザーポインタ
 	glutSwapBuffers();
 }
@@ -314,8 +365,19 @@ void processMouseMotion(int x, int y)
 void mouseClick(int button, int state, int x, int y) {
 	int index = -1;
 	switch (button) {
-	case GLUT_LEFT_BUTTON:   index = 0; break;
+	
+	// 左クリックでADS
+	case GLUT_LEFT_BUTTON:
+		index = 0;
+		if (state == GLUT_DOWN) {
+			player.isAiming = true;		// ADS開始
+		}
+		else if (state == GLUT_UP) {
+			player.isAiming = false;
+		}
+		break;
 	case GLUT_MIDDLE_BUTTON: index = 1; break;
+	//　右クリックで発射
 	case GLUT_RIGHT_BUTTON:
 		index = 2;
 		if (state == GLUT_DOWN) {

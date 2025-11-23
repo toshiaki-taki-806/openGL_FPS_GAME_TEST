@@ -116,7 +116,6 @@ bool SweepSphereAABB(Sphere& s, const Wall& w) {
 		s.velocity = vN_new + vT_new;
 
 	}
-
 }
 
 void updateSpheres() {
@@ -538,6 +537,7 @@ void checkBulletEnemyCollision(std::vector<SphereEnemy>& enemies)
 			if (intersectSegmentSphere(p1, p2, enemy)) {
 				spheres.erase(spheres.begin() + i);
 				enemies.erase(enemies.begin() + j);
+				score += 100;
 				break;
 			}
 		}

@@ -3,12 +3,13 @@
 
 std::vector<SphereEnemy>g_enemies;
 
-void addEnemy(const glm::vec3& pos, float radius, const glm::vec3& color)
+void addEnemy(const glm::vec3& _pos, const glm::vec3& _color, float _radius, int _life)
 {
 	SphereEnemy e;
-	e.position = pos;
-	e.radius = radius;
-	e.color = color;
+	e.position = _pos;
+	e.color = _color;
+	e.radius = _radius;
+	e.life = _life;
 	g_enemies.push_back(e);
 }
 

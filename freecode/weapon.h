@@ -10,8 +10,9 @@
 static float fireInterval = 0.2f;		//発射間隔のデフォルト値
 const float airDensity = 1.225f;		// 空気:1.225f kg/m³,水:1000.0f kg/m³
 const float dragCoefficient = 0.295f;	// 球体の形状
-const glm::vec3 gunMuzzleOffset(-0.2f, -0.3f, 1.2f);
-glm::vec3 gunMuzzleOffset(-0.2f, -0.3f, 1.2f);
+const glm::vec3 GUN_MUZZLE_DEFALUT_OFFSET(-0.1f, -0.15f, 1.6f);
+extern glm::vec3 gunMuzzleOffset;
+const glm::vec3 LASER_POINTER_DEFALUT_OFFSET = GUN_MUZZLE_DEFALUT_OFFSET + glm::vec3(0.0f, -0.1f, -0.6f);
 const float GUN_RADIUS = 0.02f;
 
 // ---- 他ファイルから参照する外部変数・関数 ----
@@ -55,11 +56,12 @@ extern std::vector<DebugSphereInfo> debugSpheres;
 //　レーザーポインタの定義
 struct LaserPointer {
 	bool active = false;
-	glm::vec3 startPos;      // 発射位置
-	glm::vec3 dir;           // 発射方向（正規化済み推奨）
-	glm::vec3 offset = glm::vec3(-0.2f, -0.4f, 1.4f); // カメラ基準オフセット
-	float length = 100.0f;     // 最大長さ
-	float radius = 0.005f;    // 円柱半径
+	glm::vec3 startPos;			// 発射位置
+	glm::vec3 dir;				// 発射方向（正規化済み推奨）
+	glm::vec3 offset =			// カメラ基準オフセット
+		LASER_POINTER_DEFALUT_OFFSET;
+	float length = 100.0f;		// 最大長さ
+	float radius = 0.005f;		// 円柱半径
 };
 extern LaserPointer laserPointer;
 

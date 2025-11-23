@@ -10,6 +10,7 @@ std::vector<Sphere> spheres;
 std::vector<DebugSphereInfo> debugSpheres;
 LaserPointer laserPointer;
 auto& prop = g_materialTable[static_cast<int>(MaterialType::RigidBody)];
+glm::vec3 gunMuzzleOffset = GUN_MUZZLE_DEFALUT_OFFSET;
 
 // --- Analytical CCD ---
 bool SweepSphereAABB(Sphere& s, const Wall& w) {
@@ -245,7 +246,7 @@ void fireSphere() {
 	Sphere s;
 	glm::vec3 right = glm::normalize(glm::cross(camera.front, camera.up));
 	// 発射位置をオフセット
-	s.position = camera.pos + right * GUN_MUZZLE_OFFSET.x + camera.up * GUN_MUZZLE_OFFSET.y + camera.front * GUN_MUZZLE_OFFSET.z;
+	s.position = camera.pos + right * gunMuzzleOffset.x + camera.up * gunMuzzleOffset.y + camera.front * gunMuzzleOffset.z;
 	// 方向
 	s.dir = glm::normalize(camera.front);
 	
@@ -316,8 +317,8 @@ void drawGunMuzzle(float radius) {
 
 	// 銃口の基準位置（右・上オフセットのみ）
 	glm::vec3 basePos = camera.pos
-		+ camRight * GUN_MUZZLE_OFFSET.x
-		+ camUp * GUN_MUZZLE_OFFSET.y;
+		+ camRight * gunMuzzleOffset.x
+		+ camUp * gunMuzzleOffset.y;
 
 	glTranslatef(basePos.x, basePos.y, basePos.z);
 
@@ -338,7 +339,7 @@ void drawGunMuzzle(float radius) {
 	// 円筒描画（長さ = offset.z）
 	GLUquadric* quad = gluNewQuadric();
 	gluQuadricNormals(quad, GLU_SMOOTH);
-	gluCylinder(quad, radius, radius, GUN_MUZZLE_OFFSET.z, 16, 1);
+	gluCylinder(quad, radius, radius, gunMuzzleOffset.z, 16, 1);
 	gluDeleteQuadric(quad);
 
 	glPopMatrix();
@@ -487,8 +488,8 @@ void resolveGunLineCollision(const std::vector<Wall>& walls) {
 	glm::vec3 camRight = glm::normalize(glm::cross(camera.front, camera.up));
 	glm::vec3 camUp = camera.up;
 
-	glm::vec3 lineStart = camera.pos + camRight * GUN_MUZZLE_OFFSET.x + camUp * GUN_MUZZLE_OFFSET.y;
-	glm::vec3 lineEnd = lineStart + glm::normalize(camera.front) * GUN_MUZZLE_OFFSET.z;
+	glm::vec3 lineStart = camera.pos + camRight * gunMuzzleOffset.x + camUp * gunMuzzleOffset.y;
+	glm::vec3 lineEnd = lineStart + glm::normalize(camera.front) * gunMuzzleOffset.z;
 
 	for (const auto& w : walls) {
 		if (intersectSegmentAABB(lineStart, lineEnd, w.AABBmin, w.AABBmax)) {
@@ -535,10 +536,16 @@ void checkBulletEnemyCollision(std::vector<SphereEnemy>& enemies)
 			SphereEnemy& enemy = enemies[j];
 
 			if (intersectSegmentSphere(p1, p2, enemy)) {
-				spheres.erase(spheres.begin() + i);
-				enemies.erase(enemies.begin() + j);
-				score += 100;
-				break;
+				enemy.life--;
+				if (enemy.life == 0) {
+					spheres.erase(spheres.begin() + i);
+					enemies.erase(enemies.begin() + j);
+					score += 100;
+					break;
+				}
+				else {
+					spheres.erase(spheres.begin() + i);
+				}
 			}
 		}
 	}

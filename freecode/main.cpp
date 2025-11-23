@@ -133,11 +133,26 @@ void drawADS()
 	int cy = windowHeight / 2;				// 画面中央のY座標
 
 	glBegin(GL_LINES);						// 線を描画開始
-	glVertex2f(cx - 10, cy);
-	glVertex2f(cx + 10, cy);
-	glVertex2f(cx, cy - 10);
-	glVertex2f(cx, cy + 10);
+	glVertex2f(cx - 20, cy);		glVertex2f(cx - 10, cy);
+	glVertex2f(cx - 10, cy);		glVertex2f(cx - 10, cy - 12);
+	glVertex2f(cx - 10, cy - 12);	glVertex2f(cx + 10, cy - 12);
+	glVertex2f(cx + 10, cy - 12);	glVertex2f(cx + 10, cy);
+	glVertex2f(cx + 10, cy);		glVertex2f(cx + 20, cy);
 	glEnd();								// 線の描画終了
+
+	glLineWidth(6.0f);						// ラインの太さ
+	glColor3f(1.0f, 1.0f, 1.0f);			// 赤
+	glBegin(GL_LINES);
+	glVertex2f(cx, cy);
+	glVertex2f(cx, cy - 12);
+	glEnd();
+
+	glBegin(GL_QUADS);
+	glVertex2f(cx - 20, cy - 200); // 左下
+	glVertex2f(cx + 20, cy - 200); // 右下
+	glVertex2f(cx + 20, cy - 12); // 右上
+	glVertex2f(cx - 20, cy - 12); // 左上
+	glEnd();
 
 	glEnable(GL_DEPTH_TEST);				// 深度テストを再有効化
 
@@ -263,7 +278,7 @@ void setupScene()
 // 敵を描写
 void setupEnemy()
 {
-	addEnemy(glm::vec3(1, 1, 0), 0.5f, glm::vec3(1, 1, 1));
+	//addEnemy(glm::vec3(1, 1, 0),  glm::vec3(1, 1, 1), 0.5f, 2);
 }
 
 // ランダム生成関数
@@ -275,9 +290,9 @@ void spawnRandomEnemy()
 
 	glm::vec3 pos(distXZ(rng), distY(rng), distXZ(rng));				// 乱数の座標を生成
 	float radius = 0.5f;												// Enemyの半径
-	glm::vec3 color(1.0f, 1.0f, 1.0f);									// 色(0-1 float)
+	glm::vec3 color(0.5f, 0.5f, 0.5f);									// 色(0-1 float)
 
-	addEnemy(pos, radius, color);
+	addEnemy(pos, color, radius, 3);
 }
 
 // Enemyの更新
@@ -310,16 +325,18 @@ void display()
 	// ADSを描写
 	if (player.isAiming) {
 		drawADS();
+		drawGunMuzzle(GUN_RADIUS*3.0);		// 銃
+	}
+	else{
+		drawGunMuzzle(GUN_RADIUS);		// 銃
+		drawLaserPointer();				// 常時照射レーザーポインタ
 	}
 	drawCameraInfo();				// デバッグ情報
-	drawGunMuzzle(GUN_RADIUS);		// 銃
 	drawSpheres();					// 弾丸
 	drawDebugSpheres();				// 弾のデバッグ情報
 	drawScore();					// 得点を表示
-	drawLaserPointer();				// 常時照射レーザーポインタ
 	glutSwapBuffers();
 }
-
 
 // ウィンドウサイズ変更時に呼ばれるコールバック関数
 void reshape(int w, int h)
@@ -371,9 +388,13 @@ void mouseClick(int button, int state, int x, int y) {
 		index = 0;
 		if (state == GLUT_DOWN) {
 			player.isAiming = true;		// ADS開始
+			gunMuzzleOffset = {0.0f, -0.10f, 1.2f};
+			laserPointer.offset = {0.0f, -0.20f, 0.6f};
 		}
 		else if (state == GLUT_UP) {
 			player.isAiming = false;
+			gunMuzzleOffset = GUN_MUZZLE_DEFALUT_OFFSET;
+			laserPointer.offset = LASER_POINTER_DEFALUT_OFFSET;
 		}
 		break;
 	case GLUT_MIDDLE_BUTTON: index = 1; break;
